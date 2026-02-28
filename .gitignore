@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+
+/backend/.air
+/backend/bin/
+/backend/coverage.out
+/backend/dist/
+/backend/tmp/
+
+/frontend/node_modules/
+/frontend/.next/
+/frontend/out/
