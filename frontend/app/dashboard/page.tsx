@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { DashboardSpline } from "@/components/dashboard-spline"
 import {
   SidebarInset,
   SidebarProvider,
@@ -29,28 +30,9 @@ export default function Page() {
           </Breadcrumb> */}
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="bg-muted/50 flex min-h-screen flex-1 items-center justify-center rounded-xl md:min-h-min">
-            <p className="text-muted-foreground text-sm">
-              Nothing to display, please upload logs
-            </p>
+          <div className="bg-muted/50 min-h-screen flex-1 rounded-xl p-2 md:min-h-min">
+            <DashboardSpline />
           </div>
-          {/* <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
-              <p className="text-muted-foreground text-center text-sm">
-                Nothing to display, please upload logs
-              </p>
-            </div>
-            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
-              <p className="text-muted-foreground text-center text-sm">
-                Nothing to display, please upload logs
-              </p>
-            </div>
-            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
-              <p className="text-muted-foreground text-center text-sm">
-                Nothing to display, please upload logs
-              </p>
-            </div>
-          </div>  */}
         </div>
       </SidebarInset>
     </SidebarProvider>
