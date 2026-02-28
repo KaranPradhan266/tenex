@@ -1,112 +1,58 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AppSidebar } from "@/components/app-sidebar"
 import {
-  getSupabaseBrowserClient,
-  hasSupabaseCredentials,
-} from "@/lib/supabase/client"
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
 
-export default function DashboardPage() {
-  const router = useRouter()
-  const configurationError = hasSupabaseCredentials
-    ? null
-    : "Missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in frontend/.env.local."
-  const [email, setEmail] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(hasSupabaseCredentials)
-  const [isSigningOut, setIsSigningOut] = useState(false)
-
-  useEffect(() => {
-    if (configurationError) {
-      return
-    }
-
-    let isMounted = true
-
-    const loadSession = async () => {
-      const supabase = getSupabaseBrowserClient()
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession()
-
-      if (!isMounted) {
-        return
-      }
-
-      if (sessionError) {
-        setError(sessionError.message)
-        setIsLoading(false)
-        return
-      }
-
-      if (!session) {
-        router.replace("/login")
-        return
-      }
-
-      setEmail(session.user.email ?? null)
-      setIsLoading(false)
-    }
-
-    void loadSession()
-
-    return () => {
-      isMounted = false
-    }
-  }, [configurationError, router])
-
-  const handleSignOut = async () => {
-    if (!hasSupabaseCredentials) {
-      return
-    }
-
-    setError(null)
-    setIsSigningOut(true)
-
-    const supabase = getSupabaseBrowserClient()
-    const { error: signOutError } = await supabase.auth.signOut()
-
-    if (signOutError) {
-      setError(signOutError.message)
-      setIsSigningOut(false)
-      return
-    }
-
-    router.replace("/login")
-    router.refresh()
-  }
-
+export default function Page() {
   return (
-    <main className="bg-muted flex min-h-svh items-center justify-center p-6 md:p-10">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Checking session...</p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Signed in{email ? ` as ${email}` : ""}.
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          {/* <Separator
+            orientation="vertical"
+            className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+          /> */}
+          {/* <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="#">Build Your Application</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb> */}
+        </header>
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="bg-muted/50 flex min-h-screen flex-1 items-center justify-center rounded-xl md:min-h-min">
+            <p className="text-muted-foreground text-sm">
+              Nothing to display, please upload logs
             </p>
-          )}
-          {configurationError || error ? (
-            <p className="text-sm text-red-600">{configurationError ?? error}</p>
-          ) : null}
-          <Button
-            type="button"
-            onClick={handleSignOut}
-            disabled={isLoading || isSigningOut}
-          >
-            {isSigningOut ? "Signing out..." : "Sign out"}
-          </Button>
-        </CardContent>
-      </Card>
-    </main>
+          </div>
+          {/* <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
+              <p className="text-muted-foreground text-center text-sm">
+                Nothing to display, please upload logs
+              </p>
+            </div>
+            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
+              <p className="text-muted-foreground text-center text-sm">
+                Nothing to display, please upload logs
+              </p>
+            </div>
+            <div className="bg-muted/50 flex aspect-video items-center justify-center rounded-xl">
+              <p className="text-muted-foreground text-center text-sm">
+                Nothing to display, please upload logs
+              </p>
+            </div>
+          </div>  */}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
