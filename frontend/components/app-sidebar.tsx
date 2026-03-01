@@ -1,4 +1,5 @@
 import * as React from "react"
+import Link from "next/link"
 
 import { UserMenu } from "@/components/user-menu"
 import { VersionSwitcher } from "@/components/version-switcher"
@@ -131,8 +132,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenu>
                 {item.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton>
-                      <a href={item.url}>{item.title}</a>
+                    <SidebarMenuButton asChild>
+                      <Link href={item.url}>{item.title}</Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
