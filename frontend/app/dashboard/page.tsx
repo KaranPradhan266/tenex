@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar"
+import { CircularDial } from "@/components/circularDial"
 import { DashboardSpline } from "@/components/dashboard-spline"
 import {
   SidebarInset,
@@ -30,8 +31,16 @@ export default function Page() {
           </Breadcrumb> */}
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4">
-          <div className="bg-muted/50 min-h-screen flex-1 rounded-xl p-2 md:min-h-min">
-            <DashboardSpline />
+          <div className="bg-muted/50 min-h-screen flex-1 rounded-xl p-4 md:min-h-min">
+            <div className="relative flex h-full min-h-[640px] items-center justify-center overflow-hidden rounded-xl">
+              <DashboardSpline className="absolute inset-x-[22%] inset-y-[24%] min-h-0 -translate-y-[25%] rounded-full bg-transparent" />
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <CircularDial
+                  showExport={false}
+                  className="h-full w-full max-w-[512px]"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </SidebarInset>
