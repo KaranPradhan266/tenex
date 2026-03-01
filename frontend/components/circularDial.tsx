@@ -14,6 +14,7 @@ export function CircularDial({
   const size = 500
   const centerX = size / 2
   const centerY = size / 2
+  const roundCoordinate = (value: number) => Number(value.toFixed(15))
 
   // Inner circle with ticks
   const innerCircleRadius = 180
@@ -27,10 +28,14 @@ export function CircularDial({
     const isMajorTick = i % majorTickInterval === 0
     const tickLength = isMajorTick ? 25 : 12
 
-    const x1 = centerX + innerCircleRadius * Math.cos(angleRad)
-    const y1 = centerY + innerCircleRadius * Math.sin(angleRad)
-    const x2 = centerX + (innerCircleRadius - tickLength) * Math.cos(angleRad)
-    const y2 = centerY + (innerCircleRadius - tickLength) * Math.sin(angleRad)
+    const x1 = roundCoordinate(centerX + innerCircleRadius * Math.cos(angleRad))
+    const y1 = roundCoordinate(centerY + innerCircleRadius * Math.sin(angleRad))
+    const x2 = roundCoordinate(
+      centerX + (innerCircleRadius - tickLength) * Math.cos(angleRad)
+    )
+    const y2 = roundCoordinate(
+      centerY + (innerCircleRadius - tickLength) * Math.sin(angleRad)
+    )
 
     return { x1, y1, x2, y2, isMajorTick }
   })
@@ -65,7 +70,10 @@ export function CircularDial({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         xmlns="http://www.w3.org/2000/svg"
-        className="h-auto w-full max-w-[500px] opacity-20 drop-shadow-[0_0_10px_rgba(162,231,50,0.25)]"
+        className="h-auto w-full max-w-[500px] opacity-0 [animation:fade-in-dial_3s_ease-out_5s_forwards] drop-shadow-[0_0_10px_rgba(162,231,50,0.25)]"
+        style={{
+          ["--dial-final-opacity" as string]: "0.2",
+        }}
       >
         {/* Inner circle */}
         <circle
@@ -100,6 +108,16 @@ export function CircularDial({
           Export SVG
         </button>
       ) : null}
+      <style>{`
+        @keyframes fade-in-dial {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: var(--dial-final-opacity);
+          }
+        }
+      `}</style>
     </div>
   )
 }

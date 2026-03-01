@@ -99,20 +99,6 @@ const data = {
       },
     ],
   },
-  {
-    title: "System",
-    url: "#",
-    items: [
-      {
-        title: "Ingestion Status",
-        url: "/ingestion",
-      },
-      {
-        title: "Settings",
-        url: "/settings",
-      },
-    ],
-  },
 ],
 }
 
