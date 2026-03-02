@@ -18,6 +18,8 @@ type IpSignalsResponse = {
   src_ip: string
   total_events: number
   traffic_series: TimeSeriesPoint[]
+  allowed_series: TimeSeriesPoint[]
+  blocked_series: TimeSeriesPoint[]
 }
 
 const API_BASE_URL =
@@ -141,13 +143,20 @@ export function IpSignalsPanel() {
         <div className="flex h-[420px] items-center justify-center rounded-xl border border-border/60 bg-background/40 text-sm text-muted-foreground">
           Enter a source IP to inspect request volume over time from the latest uploaded log.
         </div>
-      ) : (data?.traffic_series?.length ?? 0) === 0 ? (
+      ) : (data?.traffic_series?.length ?? 0) +
+          (data?.allowed_series?.length ?? 0) +
+          (data?.blocked_series?.length ?? 0) ===
+        0 ? (
         <div className="flex h-[420px] items-center justify-center rounded-xl border border-border/60 bg-background/40 text-sm text-muted-foreground">
           No traffic data found for this IP.
         </div>
       ) : (
         <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-          <IpSignalsChart points={data?.traffic_series ?? []} />
+          <IpSignalsChart
+            trafficPoints={data?.traffic_series ?? []}
+            allowedPoints={data?.allowed_series ?? []}
+            blockedPoints={data?.blocked_series ?? []}
+          />
         </div>
       )}
     </div>

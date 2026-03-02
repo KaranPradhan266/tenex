@@ -9,10 +9,16 @@ type TimeSeriesPoint = {
 }
 
 type IpSignalsChartProps = {
-  points: TimeSeriesPoint[]
+  trafficPoints: TimeSeriesPoint[]
+  allowedPoints: TimeSeriesPoint[]
+  blockedPoints: TimeSeriesPoint[]
 }
 
-export function IpSignalsChart({ points }: IpSignalsChartProps) {
+export function IpSignalsChart({
+  trafficPoints,
+  allowedPoints,
+  blockedPoints,
+}: IpSignalsChartProps) {
   const chartRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -31,6 +37,12 @@ export function IpSignalsChart({ points }: IpSignalsChartProps) {
         trigger: "axis",
         position(pt: number[]) {
           return [pt[0], "10%"]
+        },
+      },
+      legend: {
+        top: 0,
+        textStyle: {
+          color: "#a1a1aa",
         },
       },
       xAxis: {
@@ -87,12 +99,12 @@ export function IpSignalsChart({ points }: IpSignalsChartProps) {
       ],
       series: [
         {
-          name: "Traffic",
+          name: "All Traffic",
           type: "line",
-          smooth: true,
+          smooth: false,
           symbol: "none",
           areaStyle: {
-            color: "rgba(250, 204, 21, 0.14)",
+            color: "rgba(250, 204, 21, 0.12)",
           },
           lineStyle: {
             width: 2,
@@ -101,7 +113,41 @@ export function IpSignalsChart({ points }: IpSignalsChartProps) {
           emphasis: {
             focus: "series",
           },
-          data: points.map((point) => [point.bucket_ts, point.value]),
+          data: trafficPoints.map((point) => [point.bucket_ts, point.value]),
+        },
+        {
+          name: "Allowed",
+          type: "line",
+          smooth: false,
+          symbol: "none",
+          areaStyle: {
+            color: "rgba(163, 230, 53, 0.12)",
+          },
+          lineStyle: {
+            width: 2,
+            color: "#a3e635",
+          },
+          emphasis: {
+            focus: "series",
+          },
+          data: allowedPoints.map((point) => [point.bucket_ts, point.value]),
+        },
+        {
+          name: "Blocked",
+          type: "line",
+          smooth: false,
+          symbol: "none",
+          areaStyle: {
+            color: "rgba(248, 113, 113, 0.12)",
+          },
+          lineStyle: {
+            width: 2,
+            color: "#f87171",
+          },
+          emphasis: {
+            focus: "series",
+          },
+          data: blockedPoints.map((point) => [point.bucket_ts, point.value]),
         },
       ],
       animationDuration: 700,
@@ -118,7 +164,7 @@ export function IpSignalsChart({ points }: IpSignalsChartProps) {
       resizeObserver.disconnect()
       chart.dispose()
     }
-  }, [points])
+  }, [trafficPoints, allowedPoints, blockedPoints])
 
   return <div ref={chartRef} className="h-[420px] w-full" />
 }

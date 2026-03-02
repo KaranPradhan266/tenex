@@ -63,6 +63,24 @@ def _build_traffic_series(events: list[LogEvent]) -> list[TimeSeriesPoint]:
     ]
 
 
+def _build_action_series(
+    events: list[LogEvent],
+    *,
+    action: str,
+) -> list[TimeSeriesPoint]:
+    counts: Counter[datetime] = Counter()
+
+    for event in events:
+        if event.action != action:
+            continue
+        counts[_floor_bucket(event.ts, 60)] += 1
+
+    return [
+        TimeSeriesPoint(bucket_ts=bucket_ts, value=float(count))
+        for bucket_ts, count in sorted(counts.items())
+    ]
+
+
 def compute_ip_signals(content: bytes, src_ip: str, job_id: UUID) -> IpSignalsResponse:
     events = _parse_events_for_ip(content, src_ip)
 
@@ -71,4 +89,6 @@ def compute_ip_signals(content: bytes, src_ip: str, job_id: UUID) -> IpSignalsRe
         src_ip=src_ip,
         total_events=len(events),
         traffic_series=_build_traffic_series(events),
+        allowed_series=_build_action_series(events, action="allowed"),
+        blocked_series=_build_action_series(events, action="blocked"),
     )

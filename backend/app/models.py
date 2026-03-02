@@ -74,6 +74,8 @@ class IpSignalsResponse(BaseModel):
     src_ip: str
     total_events: int
     traffic_series: list[TimeSeriesPoint]
+    allowed_series: list[TimeSeriesPoint]
+    blocked_series: list[TimeSeriesPoint]
 
 
 class SupabaseRequestPayload(BaseModel):
