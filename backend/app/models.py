@@ -61,6 +61,45 @@ class ChartTrafficSankeyAggregate(BaseModel):
     value: int
 
 
+class IpMinuteTrafficAggregate(BaseModel):
+    src_ip: str
+    bucket_ts: datetime
+    traffic_count: int
+    allowed_count: int
+    blocked_count: int
+
+
+class IpServiceSummaryAggregate(BaseModel):
+    src_ip: str
+    service: str
+    request_count: int
+
+
+class IpPathSummaryAggregate(BaseModel):
+    src_ip: str
+    path: str
+    request_count: int
+
+
+class IpOutcomeSummaryAggregate(BaseModel):
+    src_ip: str
+    outcome: str
+    request_count: int
+
+
+class IpStatusSummaryAggregate(BaseModel):
+    src_ip: str
+    status: int
+    request_count: int
+
+
+class IpVolumeSummaryAggregate(BaseModel):
+    src_ip: str
+    total_requests: int
+    total_bytes_in: int
+    total_bytes_out: int
+
+
 class ProcessedLogFile(BaseModel):
     total_lines: int
     parsed_lines: int
@@ -69,6 +108,12 @@ class ProcessedLogFile(BaseModel):
     sample_events: list[LogEvent]
     user_agent_aggregates: list[ChartUserAgentAggregate]
     sankey_aggregates: list[ChartTrafficSankeyAggregate]
+    ip_minute_traffic_aggregates: list[IpMinuteTrafficAggregate]
+    ip_service_aggregates: list[IpServiceSummaryAggregate]
+    ip_path_aggregates: list[IpPathSummaryAggregate]
+    ip_outcome_aggregates: list[IpOutcomeSummaryAggregate]
+    ip_status_aggregates: list[IpStatusSummaryAggregate]
+    ip_volume_aggregates: list[IpVolumeSummaryAggregate]
 
 
 class TimeSeriesPoint(BaseModel):

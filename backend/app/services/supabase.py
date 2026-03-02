@@ -12,6 +12,12 @@ from app.config import get_settings
 from app.models import (
     ChartTrafficSankeyAggregate,
     ChartUserAgentAggregate,
+    IpMinuteTrafficAggregate,
+    IpOutcomeSummaryAggregate,
+    IpPathSummaryAggregate,
+    IpServiceSummaryAggregate,
+    IpStatusSummaryAggregate,
+    IpVolumeSummaryAggregate,
     SupabaseJson,
 )
 
@@ -256,6 +262,171 @@ class SupabaseService:
         self.request(
             "POST",
             "/rest/v1/chart_traffic_sankey",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_minute_traffic(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpMinuteTrafficAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "bucket_ts": row.bucket_ts.isoformat(),
+                "traffic_count": row.traffic_count,
+                "allowed_count": row.allowed_count,
+                "blocked_count": row.blocked_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_minute_traffic",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_service_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpServiceSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "service": row.service,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_service_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_path_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpPathSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "path": row.path,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_path_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_outcome_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpOutcomeSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "outcome": row.outcome,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_outcome_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_status_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpStatusSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "status": row.status,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_status_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_volume_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpVolumeSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "total_requests": row.total_requests,
+                "total_bytes_in": row.total_bytes_in,
+                "total_bytes_out": row.total_bytes_out,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_volume_summary",
             body=json.dumps(payload).encode("utf-8"),
             content_type="application/json",
             extra_headers={"Prefer": "return=minimal"},

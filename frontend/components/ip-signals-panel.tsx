@@ -22,9 +22,6 @@ type IpSignalsResponse = {
   blocked_series: TimeSeriesPoint[]
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080"
-
 export function IpSignalsPanel() {
   const [ipInput, setIpInput] = useState("")
   const [data, setData] = useState<IpSignalsResponse | null>(null)
@@ -53,25 +50,53 @@ export function IpSignalsPanel() {
         throw new Error("You must be signed in to inspect IP signals.")
       }
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/logs/ip-signals?user_id=${encodeURIComponent(
-          user.id
-        )}&src_ip=${encodeURIComponent(ipInput.trim())}`
-      )
+      const { data: latestJob, error: jobsError } = await supabase
+        .from("ingestion_jobs")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      const payload = (await response.json()) as
-        | IpSignalsResponse
-        | { detail?: string }
-
-      if (!response.ok) {
-        throw new Error(
-          "detail" in payload && typeof payload.detail === "string"
-            ? payload.detail
-            : "Unable to compute IP signals."
-        )
+      if (jobsError || !latestJob) {
+        throw new Error("No completed ingestion jobs found.")
       }
 
-      setData(payload as IpSignalsResponse)
+      const srcIp = ipInput.trim()
+
+      const { data: rows, error: minuteTrafficError } = await supabase
+        .from("ip_minute_traffic")
+        .select("bucket_ts, traffic_count, allowed_count, blocked_count")
+        .eq("job_id", latestJob.id)
+        .eq("src_ip", srcIp)
+        .order("bucket_ts", { ascending: true })
+
+      if (minuteTrafficError) {
+        throw new Error("Unable to load per-minute traffic for this IP.")
+      }
+
+      const trafficSeries = (rows ?? []).map((row) => ({
+        bucket_ts: row.bucket_ts as string,
+        value: Number(row.traffic_count ?? 0),
+      }))
+      const allowedSeries = (rows ?? []).map((row) => ({
+        bucket_ts: row.bucket_ts as string,
+        value: Number(row.allowed_count ?? 0),
+      }))
+      const blockedSeries = (rows ?? []).map((row) => ({
+        bucket_ts: row.bucket_ts as string,
+        value: Number(row.blocked_count ?? 0),
+      }))
+
+      setData({
+        job_id: latestJob.id,
+        src_ip: srcIp,
+        total_events: trafficSeries.reduce((sum, point) => sum + point.value, 0),
+        traffic_series: trafficSeries,
+        allowed_series: allowedSeries,
+        blocked_series: blockedSeries,
+      })
     } catch (caughtError) {
       setData(null)
       setError(

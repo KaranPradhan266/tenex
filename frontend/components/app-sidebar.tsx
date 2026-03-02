@@ -76,8 +76,8 @@ const data = {
         url: "/traffic",
       },
       {
-        title: "Policy Violations",
-        url: "/policy",
+        title: "Per-IP Drill Down",
+        url: "/ipdrill",
       },
       {
         title: "User-Agent Analysis",

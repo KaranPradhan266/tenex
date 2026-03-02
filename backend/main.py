@@ -142,6 +142,48 @@ async def upload_logs(
             job_id, user_id, processed.sankey_aggregates
         ),
     )
+    run_summary_step(
+        "ip_minute_traffic",
+        clear_table="ip_minute_traffic",
+        insert_fn=lambda: supabase.insert_ip_minute_traffic(
+            job_id, user_id, processed.ip_minute_traffic_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_service_summary",
+        clear_table="ip_service_summary",
+        insert_fn=lambda: supabase.insert_ip_service_summary(
+            job_id, user_id, processed.ip_service_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_path_summary",
+        clear_table="ip_path_summary",
+        insert_fn=lambda: supabase.insert_ip_path_summary(
+            job_id, user_id, processed.ip_path_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_outcome_summary",
+        clear_table="ip_outcome_summary",
+        insert_fn=lambda: supabase.insert_ip_outcome_summary(
+            job_id, user_id, processed.ip_outcome_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_status_summary",
+        clear_table="ip_status_summary",
+        insert_fn=lambda: supabase.insert_ip_status_summary(
+            job_id, user_id, processed.ip_status_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_volume_summary",
+        clear_table="ip_volume_summary",
+        insert_fn=lambda: supabase.insert_ip_volume_summary(
+            job_id, user_id, processed.ip_volume_aggregates
+        ),
+    )
 
     failed_sections = [section for section in processing_report if section.status == "failed"]
     error_message = (

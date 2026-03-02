@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
+from collections import Counter, defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException
@@ -10,6 +11,12 @@ from pydantic import ValidationError
 from app.config import get_settings
 from app.models import (
     ChartTrafficSankeyAggregate,
+    IpMinuteTrafficAggregate,
+    IpOutcomeSummaryAggregate,
+    IpPathSummaryAggregate,
+    IpServiceSummaryAggregate,
+    IpStatusSummaryAggregate,
+    IpVolumeSummaryAggregate,
     LineError,
     LogEvent,
     ProcessedLogFile,
@@ -53,6 +60,12 @@ def _status_class(status: int) -> str:
     return "other"
 
 
+def _floor_bucket(ts: datetime, bucket_seconds: int) -> datetime:
+    unix_seconds = int(ts.timestamp())
+    floored = unix_seconds - (unix_seconds % bucket_seconds)
+    return datetime.fromtimestamp(floored, tz=UTC)
+
+
 def process_uploaded_log(content: bytes) -> ProcessedLogFile:
     settings = get_settings()
 
@@ -70,6 +83,20 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
     sample_events: list[LogEvent] = []
     user_agents: list[str] = []
     sankey_link_counts: Counter[tuple[str, str]] = Counter()
+    ip_minute_traffic_counts: dict[tuple[str, datetime], dict[str, int]] = defaultdict(
+        lambda: {"traffic_count": 0, "allowed_count": 0, "blocked_count": 0}
+    )
+    ip_service_counts: Counter[tuple[str, str]] = Counter()
+    ip_path_counts: Counter[tuple[str, str]] = Counter()
+    ip_outcome_counts: Counter[tuple[str, str]] = Counter()
+    ip_status_counts: Counter[tuple[str, int]] = Counter()
+    ip_volume_counts: dict[str, dict[str, int]] = defaultdict(
+        lambda: {
+            "total_requests": 0,
+            "total_bytes_in": 0,
+            "total_bytes_out": 0,
+        }
+    )
 
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
         if not raw_line.strip():
@@ -98,6 +125,24 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
         sankey_link_counts[(status_class, event.outcome)] += 1
         sankey_link_counts[(event.outcome, event.action)] += 1
 
+        bucket_ts = _floor_bucket(event.ts, 60)
+        minute_counts = ip_minute_traffic_counts[(event.src_ip, bucket_ts)]
+        minute_counts["traffic_count"] += 1
+        if event.action == "allowed":
+            minute_counts["allowed_count"] += 1
+        if event.action == "blocked":
+            minute_counts["blocked_count"] += 1
+
+        ip_service_counts[(event.src_ip, event.service)] += 1
+        ip_path_counts[(event.src_ip, event.path)] += 1
+        ip_outcome_counts[(event.src_ip, event.outcome)] += 1
+        ip_status_counts[(event.src_ip, event.status)] += 1
+
+        ip_volume = ip_volume_counts[event.src_ip]
+        ip_volume["total_requests"] += 1
+        ip_volume["total_bytes_in"] += event.bytes_in or 0
+        ip_volume["total_bytes_out"] += event.bytes_out or 0
+
     return ProcessedLogFile(
         total_lines=total_lines,
         parsed_lines=parsed_lines,
@@ -108,5 +153,56 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
         sankey_aggregates=[
             ChartTrafficSankeyAggregate(source=source, target=target, value=value)
             for (source, target), value in sorted(sankey_link_counts.items())
+        ],
+        ip_minute_traffic_aggregates=[
+            IpMinuteTrafficAggregate(
+                src_ip=src_ip,
+                bucket_ts=bucket_ts,
+                traffic_count=counts["traffic_count"],
+                allowed_count=counts["allowed_count"],
+                blocked_count=counts["blocked_count"],
+            )
+            for (src_ip, bucket_ts), counts in sorted(ip_minute_traffic_counts.items())
+        ],
+        ip_service_aggregates=[
+            IpServiceSummaryAggregate(
+                src_ip=src_ip,
+                service=service,
+                request_count=request_count,
+            )
+            for (src_ip, service), request_count in sorted(ip_service_counts.items())
+        ],
+        ip_path_aggregates=[
+            IpPathSummaryAggregate(
+                src_ip=src_ip,
+                path=path,
+                request_count=request_count,
+            )
+            for (src_ip, path), request_count in sorted(ip_path_counts.items())
+        ],
+        ip_outcome_aggregates=[
+            IpOutcomeSummaryAggregate(
+                src_ip=src_ip,
+                outcome=outcome,
+                request_count=request_count,
+            )
+            for (src_ip, outcome), request_count in sorted(ip_outcome_counts.items())
+        ],
+        ip_status_aggregates=[
+            IpStatusSummaryAggregate(
+                src_ip=src_ip,
+                status=status,
+                request_count=request_count,
+            )
+            for (src_ip, status), request_count in sorted(ip_status_counts.items())
+        ],
+        ip_volume_aggregates=[
+            IpVolumeSummaryAggregate(
+                src_ip=src_ip,
+                total_requests=counts["total_requests"],
+                total_bytes_in=counts["total_bytes_in"],
+                total_bytes_out=counts["total_bytes_out"],
+            )
+            for src_ip, counts in sorted(ip_volume_counts.items())
         ],
     )
