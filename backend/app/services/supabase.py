@@ -189,6 +189,22 @@ class SupabaseService:
             return payload[0]
         return None
 
+    def fetch_table_rows_for_job(
+        self,
+        table_name: str,
+        job_id: UUID,
+        *,
+        columns: str,
+    ) -> list[dict[str, Any]]:
+        encoded_job_id = parse.quote(str(job_id), safe="")
+        payload = self.request(
+            "GET",
+            f"/rest/v1/{table_name}?job_id=eq.{encoded_job_id}&select={columns}",
+        )
+        if isinstance(payload, list):
+            return payload
+        return []
+
     def delete_chart_rows(self, table_name: str, job_id: UUID) -> None:
         encoded_job_id = parse.quote(str(job_id), safe="")
         self.request(
