@@ -111,6 +111,19 @@ class SupabaseService:
             f"/storage/v1/object/{self.raw_logs_bucket}/{encoded_path}",
         )
 
+    def download_file(self, storage_path: str) -> bytes:
+        encoded_path = parse.quote(storage_path, safe="/")
+        payload = self.request(
+            "GET",
+            f"/storage/v1/object/{self.raw_logs_bucket}/{encoded_path}",
+        )
+        if not isinstance(payload, bytes):
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase storage returned an unexpected response",
+            )
+        return payload
+
     def insert_ingestion_job(self, job_id: UUID, user_id: UUID, filename: str) -> None:
         payload = {
             "id": str(job_id),
@@ -140,6 +153,35 @@ class SupabaseService:
             content_type="application/json",
             extra_headers={"Prefer": "return=minimal"},
         )
+
+    def get_latest_completed_ingestion_job(self, user_id: UUID) -> dict[str, Any] | None:
+        encoded_user_id = parse.quote(str(user_id), safe="")
+        payload = self.request(
+            "GET",
+            "/rest/v1/ingestion_jobs"
+            f"?user_id=eq.{encoded_user_id}"
+            "&status=eq.completed"
+            "&order=created_at.desc"
+            "&limit=1"
+            "&select=id,storage_path,filename",
+        )
+        if isinstance(payload, list) and payload:
+            return payload[0]
+        return None
+
+    def get_ingestion_job(self, job_id: UUID, user_id: UUID) -> dict[str, Any] | None:
+        encoded_job_id = parse.quote(str(job_id), safe="")
+        encoded_user_id = parse.quote(str(user_id), safe="")
+        payload = self.request(
+            "GET",
+            "/rest/v1/ingestion_jobs"
+            f"?id=eq.{encoded_job_id}"
+            f"&user_id=eq.{encoded_user_id}"
+            "&select=id,storage_path,filename,status",
+        )
+        if isinstance(payload, list) and payload:
+            return payload[0]
+        return None
 
     def delete_chart_rows(self, table_name: str, job_id: UUID) -> None:
         encoded_job_id = parse.quote(str(job_id), safe="")

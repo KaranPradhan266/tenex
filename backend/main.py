@@ -1,10 +1,11 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import UploadSummary
+from app.models import IpSignalsResponse, UploadSummary
+from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
 from app.services.supabase import SupabaseService
 
@@ -24,6 +25,31 @@ app.add_middleware(
 @app.get("/api/hello")
 async def hello() -> dict[str, str]:
     return {"message": "Hello from Python backend"}
+
+
+@app.get("/api/logs/ip-signals", response_model=IpSignalsResponse)
+async def get_ip_signals(
+    user_id: UUID = Query(...),
+    src_ip: str = Query(...),
+    job_id: UUID | None = Query(default=None),
+) -> IpSignalsResponse:
+    supabase = SupabaseService.from_settings()
+
+    if job_id is not None:
+        ingestion_job = supabase.get_ingestion_job(job_id, user_id)
+        if not ingestion_job or ingestion_job.get("status") != "completed":
+            raise HTTPException(status_code=404, detail="Completed ingestion job not found")
+    else:
+        ingestion_job = supabase.get_latest_completed_ingestion_job(user_id)
+        if not ingestion_job:
+            raise HTTPException(status_code=404, detail="No completed ingestion jobs found")
+
+    storage_path = ingestion_job.get("storage_path")
+    if not storage_path:
+        raise HTTPException(status_code=404, detail="No storage path found for ingestion job")
+
+    content = supabase.download_file(storage_path)
+    return compute_ip_signals(content, src_ip, UUID(str(ingestion_job["id"])))
 
 
 @app.post("/api/logs/upload", response_model=UploadSummary)

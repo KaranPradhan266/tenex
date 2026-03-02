@@ -64,6 +64,18 @@ class ProcessedLogFile(BaseModel):
     sankey_aggregates: list[ChartTrafficSankeyAggregate]
 
 
+class TimeSeriesPoint(BaseModel):
+    bucket_ts: datetime
+    value: float
+
+
+class IpSignalsResponse(BaseModel):
+    job_id: UUID
+    src_ip: str
+    total_events: int
+    traffic_series: list[TimeSeriesPoint]
+
+
 class SupabaseRequestPayload(BaseModel):
     method: str
     path: str
