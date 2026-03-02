@@ -59,8 +59,8 @@ export function CircularDial({
   return (
     <div
       className={cn(
-        "flex items-center justify-center",
-        showExport ? "flex-col gap-8 p-8" : "h-full w-full",
+        "relative flex items-center justify-center",
+        showExport ? "w-full flex-col gap-8 p-8" : "h-full w-full",
         className
       )}
     >
@@ -70,7 +70,7 @@ export function CircularDial({
         height={size}
         viewBox={`0 0 ${size} ${size}`}
         xmlns="http://www.w3.org/2000/svg"
-        className="h-auto w-full max-w-[500px] opacity-0 [animation:fade-in-dial_3s_ease-out_5s_forwards] drop-shadow-[0_0_10px_rgba(162,231,50,0.25)]"
+        className="h-auto w-full max-w-[350px] opacity-0 [animation:fade-in-dial_3s_ease-out_5s_forwards] drop-shadow-[0_0_10px_rgba(162,231,50,0.25)]"
         style={{
           ["--dial-final-opacity" as string]: "0.2",
         }}
