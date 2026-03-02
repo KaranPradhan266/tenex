@@ -78,6 +78,14 @@ async def upload_logs(
         raise
 
     try:
+        supabase.delete_chart_rows("chart_user_agents", job_id)
+        supabase.delete_chart_rows("chart_traffic_sankey", job_id)
+        supabase.insert_chart_user_agents(job_id, user_id, processed.user_agent_aggregates)
+        supabase.insert_chart_traffic_sankey(job_id, user_id, processed.sankey_aggregates)
+        supabase.delete_other_chart_rows_for_user("chart_user_agents", user_id, job_id)
+        supabase.delete_other_chart_rows_for_user(
+            "chart_traffic_sankey", user_id, job_id
+        )
         supabase.update_ingestion_job(
             job_id,
             {
@@ -90,6 +98,8 @@ async def upload_logs(
             },
         )
     except HTTPException as exc:
+        supabase.delete_chart_rows("chart_user_agents", job_id)
+        supabase.delete_chart_rows("chart_traffic_sankey", job_id)
         supabase.delete_file(storage_path)
         supabase.update_ingestion_job(
             job_id,

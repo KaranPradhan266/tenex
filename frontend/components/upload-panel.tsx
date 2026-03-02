@@ -1,7 +1,7 @@
 "use client"
 
 import { FileUp, Trash2, Upload } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,6 +38,18 @@ type UploadSummary = {
   parsed_lines: number
   rejected_lines: number
   sample_errors: LineError[]
+}
+
+type IngestionJob = {
+  id: string
+  filename: string
+  status: string
+  storage_path: string | null
+  total_lines: number
+  parsed_lines: number
+  rejected_lines: number
+  created_at: string
+  completed_at: string | null
 }
 
 const API_BASE_URL =
@@ -109,6 +121,48 @@ export function UploadPanel() {
   const [files, setFiles] = useState<File[]>([])
   const [uploadSummaries, setUploadSummaries] = useState<UploadSummary[]>([])
   const [requestError, setRequestError] = useState<string | null>(null)
+  const [latestJob, setLatestJob] = useState<IngestionJob | null>(null)
+  const [isLoadingLatestJob, setIsLoadingLatestJob] = useState(true)
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadLatestJob() {
+      const supabase = getSupabaseBrowserClient()
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser()
+
+      if (error || !user) {
+        if (!ignore) {
+          setIsLoadingLatestJob(false)
+        }
+        return
+      }
+
+      const { data, error: jobsError } = await supabase
+        .from("ingestion_jobs")
+        .select(
+          "id, filename, status, storage_path, total_lines, parsed_lines, rejected_lines, created_at, completed_at"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!ignore) {
+        setLatestJob(jobsError ? null : (data as IngestionJob | null))
+        setIsLoadingLatestJob(false)
+      }
+    }
+
+    void loadLatestJob()
+
+    return () => {
+      ignore = true
+    }
+  }, [uploadSummaries])
 
   async function handleUpload(
     selectedFiles: File[],
@@ -161,7 +215,108 @@ export function UploadPanel() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)]">
+    <div className="space-y-4">
+      <Card className="border-border/60 bg-card/70 backdrop-blur">
+        <CardHeader>
+          <CardTitle>Latest Ingestion Metadata</CardTitle>
+          <CardDescription>
+            Metadata from the most recent `ingestion_jobs` entry for your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm">
+          <div className="rounded-xl border border-border/70 bg-background/50 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-base font-semibold">Latest ingestion job</p>
+                <p className="text-muted-foreground mt-1 text-[11px] uppercase tracking-[0.18em]">
+                  Supabase metadata
+                </p>
+              </div>
+              {latestJob ? (
+                <div
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                    latestJob.status === "completed"
+                      ? "bg-primary/12 text-primary"
+                      : latestJob.status === "failed"
+                        ? "bg-destructive/12 text-destructive"
+                        : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {latestJob.status}
+                </div>
+              ) : null}
+            </div>
+
+            {isLoadingLatestJob ? (
+              <p className="text-muted-foreground mt-4 text-xs">
+                Loading latest ingestion metadata...
+              </p>
+            ) : latestJob ? (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      File
+                    </p>
+                    <p className="mt-2 truncate text-sm font-medium">
+                      {latestJob.filename}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      Job ID
+                    </p>
+                    <p className="mt-2 break-all text-xs text-muted-foreground">
+                      {latestJob.id}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      Parsed
+                    </p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {latestJob.parsed_lines}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      Total
+                    </p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {latestJob.total_lines}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      Rejected
+                    </p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {latestJob.rejected_lines}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border/60 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    Storage path
+                  </p>
+                  <p className="mt-2 break-all text-xs leading-5 text-muted-foreground">
+                    {latestJob.storage_path ?? "Pending upload"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground mt-4 text-xs">
+                No ingestion job metadata available yet.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-border/60 bg-card/70 backdrop-blur">
         <CardHeader>
           <CardTitle>Log Intake</CardTitle>

@@ -40,14 +40,28 @@ class UploadSummary(BaseModel):
     sample_events: list[LogEvent]
 
 
+class ChartUserAgentAggregate(BaseModel):
+    group_name: str
+    category_name: str
+    tier_name: str
+    leaf_name: str
+    event_count: int
+
+
+class ChartTrafficSankeyAggregate(BaseModel):
+    source: str
+    target: str
+    value: int
+
+
 class ProcessedLogFile(BaseModel):
     total_lines: int
     parsed_lines: int
     rejected_lines: int
     sample_errors: list[LineError]
     sample_events: list[LogEvent]
-    user_agent_counts: dict[str, int]
-    sankey_link_counts: dict[str, int]
+    user_agent_aggregates: list[ChartUserAgentAggregate]
+    sankey_aggregates: list[ChartTrafficSankeyAggregate]
 
 
 class SupabaseRequestPayload(BaseModel):

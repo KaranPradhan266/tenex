@@ -8,7 +8,13 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.config import get_settings
-from app.models import LineError, LogEvent, ProcessedLogFile
+from app.models import (
+    ChartTrafficSankeyAggregate,
+    LineError,
+    LogEvent,
+    ProcessedLogFile,
+)
+from app.processors.user_agents import build_user_agent_aggregates
 
 
 def validate_filename(filename: str | None) -> str:
@@ -62,8 +68,8 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
     parsed_lines = 0
     sample_errors: list[LineError] = []
     sample_events: list[LogEvent] = []
-    user_agent_counts: Counter[str] = Counter()
-    sankey_link_counts: Counter[str] = Counter()
+    user_agents: list[str] = []
+    sankey_link_counts: Counter[tuple[str, str]] = Counter()
 
     for line_number, raw_line in enumerate(text.splitlines(), start=1):
         if not raw_line.strip():
@@ -84,13 +90,13 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
             sample_events.append(event)
 
         # Future chart hooks: one parse pass updates multiple aggregate streams.
-        user_agent_counts[event.user_agent] += 1
+        user_agents.append(event.user_agent)
 
         status_class = _status_class(event.status)
-        sankey_link_counts[f"{event.method}|{event.service}"] += 1
-        sankey_link_counts[f"{event.service}|{status_class}"] += 1
-        sankey_link_counts[f"{status_class}|{event.outcome}"] += 1
-        sankey_link_counts[f"{event.outcome}|{event.action}"] += 1
+        sankey_link_counts[(event.method, event.service)] += 1
+        sankey_link_counts[(event.service, status_class)] += 1
+        sankey_link_counts[(status_class, event.outcome)] += 1
+        sankey_link_counts[(event.outcome, event.action)] += 1
 
     return ProcessedLogFile(
         total_lines=total_lines,
@@ -98,6 +104,9 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
         rejected_lines=total_lines - parsed_lines,
         sample_errors=sample_errors,
         sample_events=sample_events,
-        user_agent_counts=dict(user_agent_counts),
-        sankey_link_counts=dict(sankey_link_counts),
+        user_agent_aggregates=build_user_agent_aggregates(user_agents),
+        sankey_aggregates=[
+            ChartTrafficSankeyAggregate(source=source, target=target, value=value)
+            for (source, target), value in sorted(sankey_link_counts.items())
+        ],
     )

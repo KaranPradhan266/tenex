@@ -9,7 +9,11 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from app.config import get_settings
-from app.models import SupabaseJson
+from app.models import (
+    ChartTrafficSankeyAggregate,
+    ChartUserAgentAggregate,
+    SupabaseJson,
+)
 
 
 @dataclass
@@ -133,6 +137,84 @@ class SupabaseService:
             "PATCH",
             f"/rest/v1/ingestion_jobs?id=eq.{encoded_job_id}",
             body=json.dumps(values).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def delete_chart_rows(self, table_name: str, job_id: UUID) -> None:
+        encoded_job_id = parse.quote(str(job_id), safe="")
+        self.request(
+            "DELETE",
+            f"/rest/v1/{table_name}?job_id=eq.{encoded_job_id}",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def delete_other_chart_rows_for_user(
+        self,
+        table_name: str,
+        user_id: UUID,
+        keep_job_id: UUID,
+    ) -> None:
+        encoded_user_id = parse.quote(str(user_id), safe="")
+        encoded_job_id = parse.quote(str(keep_job_id), safe="")
+        self.request(
+            "DELETE",
+            f"/rest/v1/{table_name}?user_id=eq.{encoded_user_id}&job_id=neq.{encoded_job_id}",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_chart_user_agents(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[ChartUserAgentAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "group_name": row.group_name,
+                "category_name": row.category_name,
+                "tier_name": row.tier_name,
+                "leaf_name": row.leaf_name,
+                "event_count": row.event_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/chart_user_agents",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_chart_traffic_sankey(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[ChartTrafficSankeyAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "source": row.source,
+                "target": row.target,
+                "value": row.value,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/chart_traffic_sankey",
+            body=json.dumps(payload).encode("utf-8"),
             content_type="application/json",
             extra_headers={"Prefer": "return=minimal"},
         )
