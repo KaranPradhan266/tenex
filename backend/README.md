@@ -8,6 +8,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Create `backend/.env`:
+
+```env
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_RAW_LOGS_BUCKET=raw-logs
+```
+
 Run the API:
 
 ```bash
@@ -18,6 +26,7 @@ Upload logs:
 
 - `POST /api/logs/upload`
 - accepts `.log` and `.txt`
+- expects a `user_id` form field
 - expects one JSON object per non-empty line
 
 Example line:

@@ -23,6 +23,7 @@ import {
   FileUploadList,
   FileUploadTrigger,
 } from "@/components/ui/file-upload"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 type LineError = {
   line: number
@@ -30,7 +31,9 @@ type LineError = {
 }
 
 type UploadSummary = {
+  job_id: string
   filename: string
+  storage_path: string
   total_lines: number
   parsed_lines: number
   rejected_lines: number
@@ -42,6 +45,7 @@ const API_BASE_URL =
 
 function uploadLogFile(
   file: File,
+  userId: string,
   options: {
     onProgress: (file: File, progress: number) => void
     onSuccess: (file: File) => void
@@ -51,6 +55,7 @@ function uploadLogFile(
   return new Promise<UploadSummary>((resolve, reject) => {
     const formData = new FormData()
     formData.append("file", file)
+    formData.append("user_id", userId)
 
     const request = new XMLHttpRequest()
     request.open("POST", `${API_BASE_URL}/api/logs/upload`)
@@ -114,12 +119,22 @@ export function UploadPanel() {
     }
   ) {
     setRequestError(null)
+    const supabase = getSupabaseBrowserClient()
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
+    if (error || !user) {
+      setRequestError("You must be signed in before uploading logs.")
+      return
+    }
 
     const nextSummaries: UploadSummary[] = []
 
     for (const file of selectedFiles) {
       try {
-        const summary = await uploadLogFile(file, options)
+        const summary = await uploadLogFile(file, user.id, options)
         nextSummaries.push(summary)
       } catch (error) {
         const message =
@@ -258,26 +273,63 @@ export function UploadPanel() {
               {uploadSummaries.map((summary) => (
                 <div
                   key={summary.filename}
-                  className="rounded-lg border border-border/70 bg-background/40 p-4"
+                  className="rounded-xl border border-border/70 bg-background/50 p-4"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{summary.filename}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        {summary.parsed_lines} parsed / {summary.total_lines}{" "}
-                        total lines
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-base font-semibold">
+                        {summary.filename}
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-[11px] uppercase tracking-[0.18em]">
+                        Ingestion result
                       </p>
                     </div>
-                    <div className="text-right text-xs">
-                      <p className="text-primary">
-                        {summary.rejected_lines} rejected
+                    <div
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                        summary.rejected_lines === 0
+                          ? "bg-primary/12 text-primary"
+                          : "bg-destructive/12 text-destructive"
+                      }`}
+                    >
+                      {summary.rejected_lines === 0
+                        ? "Clean upload"
+                        : `${summary.rejected_lines} rejected`}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                      <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                        Parsed
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {summary.parsed_lines}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-border/60 bg-card/60 p-3">
+                      <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                        Total lines
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">
+                        {summary.total_lines}
                       </p>
                     </div>
                   </div>
 
+                  <div className="mt-4 rounded-lg border border-border/60 bg-card/50 p-3">
+                    <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      Storage path
+                    </p>
+                    <p className="mt-2 break-all text-xs leading-5 text-muted-foreground">
+                      {summary.storage_path}
+                    </p>
+                  </div>
+
                   {summary.sample_errors.length > 0 ? (
-                    <div className="mt-3 space-y-1">
-                      <p className="text-xs font-medium">Sample errors</p>
+                    <div className="mt-4 space-y-1">
+                      <p className="text-xs font-medium text-destructive">
+                        Sample errors
+                      </p>
                       {summary.sample_errors.map((error) => (
                         <p
                           key={`${summary.filename}-${error.line}`}
@@ -288,9 +340,15 @@ export function UploadPanel() {
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      No validation errors returned.
-                    </p>
+                    <div className="mt-4 rounded-lg border border-primary/15 bg-primary/5 p-3">
+                      <p className="text-xs font-medium text-primary">
+                        No validation errors
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Every line in this file matched the current ingestion
+                        schema.
+                      </p>
+                    </div>
                   )}
                 </div>
               ))}
