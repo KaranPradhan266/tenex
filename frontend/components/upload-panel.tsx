@@ -30,6 +30,12 @@ type LineError = {
   error: string
 }
 
+type ProcessingSectionReport = {
+  name: string
+  status: string
+  message?: string | null
+}
+
 type UploadSummary = {
   job_id: string
   filename: string
@@ -38,6 +44,7 @@ type UploadSummary = {
   parsed_lines: number
   rejected_lines: number
   sample_errors: LineError[]
+  processing_report: ProcessingSectionReport[]
 }
 
 type IngestionJob = {
@@ -50,6 +57,7 @@ type IngestionJob = {
   rejected_lines: number
   created_at: string
   completed_at: string | null
+  error_message: string | null
 }
 
 const API_BASE_URL =
@@ -60,6 +68,7 @@ function uploadLogFile(
   userId: string,
   options: {
     onProgress: (file: File, progress: number) => void
+    onProcessingStart?: (file: File) => void
     onSuccess: (file: File) => void
     onError: (file: File, error: Error) => void
   }
@@ -78,7 +87,12 @@ function uploadLogFile(
         return
       }
 
-      options.onProgress(file, Math.round((event.loaded / event.total) * 100))
+      options.onProgress(file, Math.round((event.loaded / event.total) * 90))
+    })
+
+    request.upload.addEventListener("load", () => {
+      options.onProgress(file, 90)
+      options.onProcessingStart?.(file)
     })
 
     request.addEventListener("load", () => {
@@ -123,6 +137,7 @@ export function UploadPanel() {
   const [requestError, setRequestError] = useState<string | null>(null)
   const [latestJob, setLatestJob] = useState<IngestionJob | null>(null)
   const [isLoadingLatestJob, setIsLoadingLatestJob] = useState(true)
+  const [processingFiles, setProcessingFiles] = useState<string[]>([])
 
   useEffect(() => {
     let ignore = false
@@ -144,7 +159,7 @@ export function UploadPanel() {
       const { data, error: jobsError } = await supabase
         .from("ingestion_jobs")
         .select(
-          "id, filename, status, storage_path, total_lines, parsed_lines, rejected_lines, created_at, completed_at"
+          "id, filename, status, storage_path, total_lines, parsed_lines, rejected_lines, created_at, completed_at, error_message"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -188,7 +203,28 @@ export function UploadPanel() {
 
     for (const file of selectedFiles) {
       try {
-        const summary = await uploadLogFile(file, user.id, options)
+        const summary = await uploadLogFile(file, user.id, {
+          ...options,
+          onProcessingStart(currentFile) {
+            setProcessingFiles((current) =>
+              current.includes(currentFile.name)
+                ? current
+                : [...current, currentFile.name]
+            )
+          },
+          onSuccess(currentFile) {
+            setProcessingFiles((current) =>
+              current.filter((name) => name !== currentFile.name)
+            )
+            options.onSuccess(currentFile)
+          },
+          onError(currentFile, uploadError) {
+            setProcessingFiles((current) =>
+              current.filter((name) => name !== currentFile.name)
+            )
+            options.onError(currentFile, uploadError)
+          },
+        })
         nextSummaries.push(summary)
       } catch (error) {
         const message =
@@ -307,6 +343,17 @@ export function UploadPanel() {
                     {latestJob.storage_path ?? "Pending upload"}
                   </p>
                 </div>
+
+                {latestJob.error_message ? (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                    <p className="text-xs font-medium text-amber-300">
+                      Processing notes
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                      {latestJob.error_message}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <p className="text-muted-foreground mt-4 text-xs">
@@ -393,6 +440,17 @@ export function UploadPanel() {
                 </FileUploadItem>
               ))}
             </FileUploadList>
+
+            {processingFiles.length > 0 ? (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <p className="text-xs font-medium text-primary">
+                  Processing summaries...
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {processingFiles.join(", ")}
+                </p>
+              </div>
+            ) : null}
           </FileUpload>
         </CardContent>
       </Card>
@@ -425,11 +483,17 @@ export function UploadPanel() {
             </div>
           ) : (
             <div className="space-y-3">
-              {uploadSummaries.map((summary) => (
-                <div
-                  key={summary.filename}
-                  className="rounded-xl border border-border/70 bg-background/50 p-4"
-                >
+              {uploadSummaries.map((summary) => {
+                const failedSections = summary.processing_report.filter(
+                  (section) => section.status === "failed"
+                )
+                const hasProcessingWarnings = failedSections.length > 0
+
+                return (
+                  <div
+                    key={summary.filename}
+                    className="rounded-xl border border-border/70 bg-background/50 p-4"
+                  >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-base font-semibold">
@@ -441,12 +505,16 @@ export function UploadPanel() {
                     </div>
                     <div
                       className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                        summary.rejected_lines === 0
+                        hasProcessingWarnings
+                          ? "bg-amber-500/12 text-amber-300"
+                          : summary.rejected_lines === 0
                           ? "bg-primary/12 text-primary"
                           : "bg-destructive/12 text-destructive"
                       }`}
                     >
-                      {summary.rejected_lines === 0
+                      {hasProcessingWarnings
+                        ? "Partial success"
+                        : summary.rejected_lines === 0
                         ? "Clean upload"
                         : `${summary.rejected_lines} rejected`}
                     </div>
@@ -505,8 +573,43 @@ export function UploadPanel() {
                       </p>
                     </div>
                   )}
-                </div>
-              ))}
+
+                  {summary.processing_report.length > 0 ? (
+                    <div className="mt-4 rounded-lg border border-border/60 bg-card/50 p-3">
+                      <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                        Processing report
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        {summary.processing_report.map((section) => (
+                          <div
+                            key={`${summary.filename}-${section.name}`}
+                            className="flex items-start justify-between gap-4 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium">{section.name}</p>
+                              {section.message ? (
+                                <p className="mt-1 text-muted-foreground leading-5">
+                                  {section.message}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div
+                              className={`shrink-0 rounded-full px-2 py-0.5 font-medium ${
+                                section.status === "completed"
+                                  ? "bg-primary/12 text-primary"
+                                  : "bg-destructive/12 text-destructive"
+                              }`}
+                            >
+                              {section.status}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  </div>
+                )
+              })}
             </div>
           )}
         </CardContent>

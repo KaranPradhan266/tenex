@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import IpSignalsResponse, UploadSummary
+from app.models import IpSignalsResponse, ProcessingSectionReport, UploadSummary
 from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
 from app.services.supabase import SupabaseService
@@ -103,15 +103,56 @@ async def upload_logs(
         )
         raise
 
-    try:
-        supabase.delete_chart_rows("chart_user_agents", job_id)
-        supabase.delete_chart_rows("chart_traffic_sankey", job_id)
-        supabase.insert_chart_user_agents(job_id, user_id, processed.user_agent_aggregates)
-        supabase.insert_chart_traffic_sankey(job_id, user_id, processed.sankey_aggregates)
-        supabase.delete_other_chart_rows_for_user("chart_user_agents", user_id, job_id)
-        supabase.delete_other_chart_rows_for_user(
-            "chart_traffic_sankey", user_id, job_id
+    processing_report: list[ProcessingSectionReport] = []
+
+    def run_summary_step(
+        name: str,
+        *,
+        clear_table: str,
+        insert_fn: callable,
+    ) -> None:
+        try:
+            supabase.delete_chart_rows(clear_table, job_id)
+            insert_fn()
+            supabase.delete_other_chart_rows_for_user(clear_table, user_id, job_id)
+            processing_report.append(
+                ProcessingSectionReport(name=name, status="completed")
+            )
+        except HTTPException as exc:
+            supabase.delete_chart_rows(clear_table, job_id)
+            processing_report.append(
+                ProcessingSectionReport(
+                    name=name,
+                    status="failed",
+                    message=exc.detail,
+                )
+            )
+
+    run_summary_step(
+        "user_agents",
+        clear_table="chart_user_agents",
+        insert_fn=lambda: supabase.insert_chart_user_agents(
+            job_id, user_id, processed.user_agent_aggregates
+        ),
+    )
+    run_summary_step(
+        "traffic_sankey",
+        clear_table="chart_traffic_sankey",
+        insert_fn=lambda: supabase.insert_chart_traffic_sankey(
+            job_id, user_id, processed.sankey_aggregates
+        ),
+    )
+
+    failed_sections = [section for section in processing_report if section.status == "failed"]
+    error_message = (
+        "; ".join(
+            f"{section.name}: {section.message}" for section in failed_sections if section.message
         )
+        if failed_sections
+        else None
+    )
+
+    try:
         supabase.update_ingestion_job(
             job_id,
             {
@@ -119,13 +160,11 @@ async def upload_logs(
                 "total_lines": processed.total_lines,
                 "parsed_lines": processed.parsed_lines,
                 "rejected_lines": processed.rejected_lines,
-                "error_message": None,
+                "error_message": error_message,
                 "completed_at": datetime.now().isoformat(),
             },
         )
     except HTTPException as exc:
-        supabase.delete_chart_rows("chart_user_agents", job_id)
-        supabase.delete_chart_rows("chart_traffic_sankey", job_id)
         supabase.delete_file(storage_path)
         supabase.update_ingestion_job(
             job_id,
@@ -145,4 +184,5 @@ async def upload_logs(
         rejected_lines=processed.rejected_lines,
         sample_errors=processed.sample_errors,
         sample_events=processed.sample_events,
+        processing_report=processing_report,
     )

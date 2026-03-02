@@ -29,6 +29,12 @@ class LineError(BaseModel):
     error: str
 
 
+class ProcessingSectionReport(BaseModel):
+    name: str
+    status: str
+    message: str | None = None
+
+
 class UploadSummary(BaseModel):
     job_id: UUID
     filename: str
@@ -38,6 +44,7 @@ class UploadSummary(BaseModel):
     rejected_lines: int
     sample_errors: list[LineError]
     sample_events: list[LogEvent]
+    processing_report: list[ProcessingSectionReport]
 
 
 class ChartUserAgentAggregate(BaseModel):
