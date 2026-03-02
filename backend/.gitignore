@@ -2,13 +2,19 @@
 bin/
 dist/
 tmp/
+__pycache__/
+*.py[cod]
 
 # Coverage
 coverage.out
+.coverage
+.pytest_cache/
 
 # Local env
 .env
 .env.*
+.venv/
+venv/
 
 # Air live-reload temp dir
 .air
