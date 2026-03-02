@@ -4,7 +4,13 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.models import IpSignalsResponse, ProcessingSectionReport, UploadSummary
+from app.ml.scoring import score_ip_risk_rankings
+from app.models import (
+    IpRiskRankingsResponse,
+    IpSignalsResponse,
+    ProcessingSectionReport,
+    UploadSummary,
+)
 from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
 from app.services.supabase import SupabaseService
@@ -50,6 +56,35 @@ async def get_ip_signals(
 
     content = supabase.download_file(storage_path)
     return compute_ip_signals(content, src_ip, UUID(str(ingestion_job["id"])))
+
+
+@app.get("/api/ip-risk-rankings", response_model=IpRiskRankingsResponse)
+async def get_ip_risk_rankings(
+    user_id: UUID = Query(...),
+    job_id: UUID | None = Query(default=None),
+    limit: int = Query(default=25, ge=1, le=100),
+) -> IpRiskRankingsResponse:
+    supabase = SupabaseService.from_settings()
+
+    if job_id is not None:
+        ingestion_job = supabase.get_ingestion_job(job_id, user_id)
+        if not ingestion_job or ingestion_job.get("status") != "completed":
+            raise HTTPException(status_code=404, detail="Completed ingestion job not found")
+    else:
+        ingestion_job = supabase.get_latest_completed_ingestion_job(user_id)
+        if not ingestion_job:
+            raise HTTPException(status_code=404, detail="No completed ingestion jobs found")
+
+    rankings = score_ip_risk_rankings(
+        supabase,
+        UUID(str(ingestion_job["id"])),
+    )
+
+    return IpRiskRankingsResponse(
+        job_id=UUID(str(ingestion_job["id"])),
+        total_ips=len(rankings),
+        rankings=rankings[:limit],
+    )
 
 
 @app.post("/api/logs/upload", response_model=UploadSummary)

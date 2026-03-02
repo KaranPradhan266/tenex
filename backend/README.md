@@ -62,3 +62,16 @@ It then:
 - assigns heuristic labels: `low`, `medium`, `high`, `critical`
 - trains a baseline `RandomForestClassifier`
 - writes a `joblib` artifact containing the model, feature names, feature rows, and any classification report
+
+Score IPs with the saved model:
+
+```bash
+python scripts/score_ip_risk_model.py \
+  --user-id <supabase-auth-user-id> \
+  --model models/ip_risk_model.joblib
+```
+
+Optional:
+
+- pass `--job-id <ingestion-job-id>` to score a specific completed upload
+- omit `--job-id` to score the latest completed job for that user

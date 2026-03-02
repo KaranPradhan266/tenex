@@ -130,6 +130,29 @@ class IpSignalsResponse(BaseModel):
     blocked_series: list[TimeSeriesPoint]
 
 
+class IpRiskRankingEntry(BaseModel):
+    src_ip: str
+    predicted_label: str
+    heuristic_label: str
+    prediction_confidence: float
+    probabilities: dict[str, float]
+    total_requests: int
+    total_bytes_in: int
+    total_bytes_out: int
+    service_count: int
+    path_count: int
+    outcome_count: int
+    suspicious_outcome_ratio: float
+    status_4xx_ratio: float
+    status_5xx_ratio: float
+
+
+class IpRiskRankingsResponse(BaseModel):
+    job_id: UUID
+    total_ips: int
+    rankings: list[IpRiskRankingEntry]
+
+
 class SupabaseRequestPayload(BaseModel):
     method: str
     path: str
