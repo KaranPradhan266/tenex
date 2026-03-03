@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.ml.scoring import score_ip_risk_rankings
 from app.models import (
+    IpAiInsightRequest,
+    IpAiInsightResponse,
     IpRiskRankingsResponse,
     IpSignalsResponse,
     ProcessingSectionReport,
@@ -14,6 +16,7 @@ from app.models import (
 from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
 from app.services.supabase import SupabaseService
+from app.services.xai import XAIService
 
 app = FastAPI(title="tenex-backend")
 app.add_middleware(
@@ -85,6 +88,13 @@ async def get_ip_risk_rankings(
         total_ips=len(rankings),
         rankings=rankings[:limit],
     )
+
+
+@app.post("/api/ip-ai-insight", response_model=IpAiInsightResponse)
+async def get_ip_ai_insight(payload: IpAiInsightRequest) -> IpAiInsightResponse:
+    xai = XAIService.from_settings()
+    insight = xai.generate_ip_insight(payload)
+    return IpAiInsightResponse(insight=insight, model=xai.model)
 
 
 @app.post("/api/logs/upload", response_model=UploadSummary)

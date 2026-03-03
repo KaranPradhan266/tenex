@@ -44,6 +44,57 @@ type DrilldownData = {
   statuses: StatusRow[]
 }
 
+type AiInsightResponse = {
+  insight: string
+  model: string
+}
+
+function renderInlineMarkdown(text: string) {
+  const segments = text.split(/(\*\*.*?\*\*)/g)
+
+  return segments.map((segment, index) => {
+    if (segment.startsWith("**") && segment.endsWith("**")) {
+      return (
+        <strong key={`${segment}-${index}`} className="font-semibold text-foreground">
+          {segment.slice(2, -2)}
+        </strong>
+      )
+    }
+
+    return <span key={`${segment}-${index}`}>{segment}</span>
+  })
+}
+
+function renderInsightMarkdown(insight: string) {
+  const lines = insight
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  const bulletLines = lines.filter((line) => line.startsWith("- "))
+  if (bulletLines.length === lines.length) {
+    return (
+      <ul className="space-y-3">
+        {bulletLines.map((line, index) => (
+          <li key={`${line}-${index}`} className="text-sm leading-7 text-foreground">
+            {renderInlineMarkdown(line.slice(2))}
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {lines.map((line, index) => (
+        <p key={`${line}-${index}`} className="text-sm leading-7 text-foreground">
+          {renderInlineMarkdown(line)}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 function SummaryList<T extends { request_count: number }>(props: {
   title: string
   rows: T[]
@@ -84,10 +135,22 @@ export function IpDrilldownPanel() {
   const [data, setData] = useState<DrilldownData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [aiModel, setAiModel] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [isGeneratingInsight, setIsGeneratingInsight] = useState(false)
+  const [generatedForContext, setGeneratedForContext] = useState<string | null>(null)
+
+  const currentContextKey = data ? `${data.jobId}:${data.srcIp}` : null
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080"
 
   async function loadDrilldown(srcIp: string) {
     setError(null)
     setIsLoading(true)
+    setAiInsight(null)
+    setAiModel(null)
+    setAiError(null)
+    setGeneratedForContext(null)
 
     try {
       const supabase = getSupabaseBrowserClient()
@@ -189,6 +252,71 @@ export function IpDrilldownPanel() {
     }
   }
 
+  async function handleGenerateInsight() {
+    if (!data || !currentContextKey || generatedForContext === currentContextKey) {
+      return
+    }
+
+    setAiError(null)
+    setIsGeneratingInsight(true)
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/ip-ai-insight`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          src_ip: data.srcIp,
+          job_id: data.jobId,
+          total_requests: data.volume?.total_requests ?? 0,
+          total_bytes_in: data.volume?.total_bytes_in ?? 0,
+          total_bytes_out: data.volume?.total_bytes_out ?? 0,
+          services: data.services.map((row) => ({
+            label: row.service,
+            request_count: row.request_count,
+          })),
+          paths: data.paths.map((row) => ({
+            label: row.path,
+            request_count: row.request_count,
+          })),
+          outcomes: data.outcomes.map((row) => ({
+            label: row.outcome,
+            request_count: row.request_count,
+          })),
+          statuses: data.statuses.map((row) => ({
+            label: String(row.status),
+            request_count: row.request_count,
+          })),
+        }),
+      })
+
+      const responseBody = (await response.json()) as AiInsightResponse | { detail?: string }
+
+      if (!response.ok || !("insight" in responseBody)) {
+        throw new Error(
+          "detail" in responseBody && responseBody.detail
+            ? responseBody.detail
+            : "Unable to generate AI insights."
+        )
+      }
+
+      setAiInsight(responseBody.insight)
+      setAiModel(responseBody.model)
+      setGeneratedForContext(currentContextKey)
+    } catch (caughtError) {
+      setAiInsight(null)
+      setAiModel(null)
+      setAiError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to generate AI insights."
+      )
+    } finally {
+      setIsGeneratingInsight(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -274,6 +402,52 @@ export function IpDrilldownPanel() {
                 {data.volume?.total_bytes_out ?? 0}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                  AI Insights
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Generate a one-time analyst summary for the loaded source IP.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleGenerateInsight}
+                disabled={
+                  !data ||
+                  isLoading ||
+                  isGeneratingInsight ||
+                  generatedForContext === currentContextKey
+                }
+              >
+                {isGeneratingInsight ? "Generating..." : "Generate"}
+              </Button>
+            </div>
+
+            {aiError ? (
+              <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {aiError}
+              </div>
+            ) : null}
+
+            {aiInsight ? (
+              <div className="mt-4 rounded-lg border border-border/50 bg-card/50 p-4">
+                {renderInsightMarkdown(aiInsight)}
+                {aiModel ? (
+                  <p className="text-muted-foreground mt-3 text-xs">Generated with {aiModel}</p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
+                {isGeneratingInsight
+                  ? "Generating grounded analyst insight..."
+                  : "Insights will appear here after the source IP summaries load and you click Generate."}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">

@@ -167,6 +167,28 @@ class IpRiskRankingsResponse(BaseModel):
     rankings: list[IpRiskRankingEntry]
 
 
+class IpInsightSummaryRow(BaseModel):
+    label: str
+    request_count: int
+
+
+class IpAiInsightRequest(BaseModel):
+    src_ip: str
+    job_id: UUID
+    total_requests: int
+    total_bytes_in: int
+    total_bytes_out: int
+    services: list[IpInsightSummaryRow]
+    paths: list[IpInsightSummaryRow]
+    outcomes: list[IpInsightSummaryRow]
+    statuses: list[IpInsightSummaryRow]
+
+
+class IpAiInsightResponse(BaseModel):
+    insight: str
+    model: str
+
+
 class SupabaseRequestPayload(BaseModel):
     method: str
     path: str
