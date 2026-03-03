@@ -49,6 +49,14 @@ type AiInsightResponse = {
   model: string
 }
 
+type IpLookupResponse = {
+  country: string | null
+  regionName: string | null
+  city: string | null
+  isp: string | null
+  org: string | null
+}
+
 function renderInlineMarkdown(text: string) {
   const segments = text.split(/(\*\*.*?\*\*)/g)
 
@@ -140,6 +148,9 @@ export function IpDrilldownPanel() {
   const [aiError, setAiError] = useState<string | null>(null)
   const [isGeneratingInsight, setIsGeneratingInsight] = useState(false)
   const [generatedForContext, setGeneratedForContext] = useState<string | null>(null)
+  const [ipLookup, setIpLookup] = useState<IpLookupResponse | null>(null)
+  const [ipLookupError, setIpLookupError] = useState<string | null>(null)
+  const [isLoadingIpLookup, setIsLoadingIpLookup] = useState(false)
 
   const currentContextKey = data ? `${data.jobId}:${data.srcIp}` : null
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080"
@@ -151,6 +162,9 @@ export function IpDrilldownPanel() {
     setAiModel(null)
     setAiError(null)
     setGeneratedForContext(null)
+    setIpLookup(null)
+    setIpLookupError(null)
+    setIsLoadingIpLookup(false)
 
     try {
       const supabase = getSupabaseBrowserClient()
@@ -240,6 +254,7 @@ export function IpDrilldownPanel() {
         outcomes: (outcomeResult.data as OutcomeRow[] | null) ?? [],
         statuses: (statusResult.data as StatusRow[] | null) ?? [],
       })
+      void loadIpLookup(srcIp)
     } catch (caughtError) {
       setData(null)
       setError(
@@ -272,6 +287,11 @@ export function IpDrilldownPanel() {
           total_requests: data.volume?.total_requests ?? 0,
           total_bytes_in: data.volume?.total_bytes_in ?? 0,
           total_bytes_out: data.volume?.total_bytes_out ?? 0,
+          country: ipLookup?.country ?? null,
+          regionName: ipLookup?.regionName ?? null,
+          city: ipLookup?.city ?? null,
+          isp: ipLookup?.isp ?? null,
+          org: ipLookup?.org ?? null,
           services: data.services.map((row) => ({
             label: row.service,
             request_count: row.request_count,
@@ -314,6 +334,37 @@ export function IpDrilldownPanel() {
       )
     } finally {
       setIsGeneratingInsight(false)
+    }
+  }
+
+  async function loadIpLookup(srcIp: string) {
+    setIpLookup(null)
+    setIpLookupError(null)
+    setIsLoadingIpLookup(true)
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/ip-lookup?src_ip=${encodeURIComponent(srcIp)}`
+      )
+      const responseBody = (await response.json()) as IpLookupResponse | { detail?: string }
+
+      if (!response.ok) {
+        throw new Error(
+          "detail" in responseBody && responseBody.detail
+            ? responseBody.detail
+            : "Unable to load IP enrichment."
+        )
+      }
+
+      setIpLookup(responseBody as IpLookupResponse)
+    } catch (caughtError) {
+      setIpLookupError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to load IP enrichment."
+      )
+    } finally {
+      setIsLoadingIpLookup(false)
     }
   }
 
@@ -402,6 +453,62 @@ export function IpDrilldownPanel() {
                 {data.volume?.total_bytes_out ?? 0}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+            <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+              IP Enrichment
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Country, region, city, and provider details for this source IP.
+            </p>
+
+            {isLoadingIpLookup ? (
+              <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
+                Loading IP enrichment...
+              </div>
+            ) : ipLookupError ? (
+              <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {ipLookupError}
+              </div>
+            ) : ipLookup ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    Country
+                  </p>
+                  <p className="mt-2 text-sm font-medium">{ipLookup.country ?? "Unknown"}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    Region
+                  </p>
+                  <p className="mt-2 text-sm font-medium">{ipLookup.regionName ?? "Unknown"}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    City
+                  </p>
+                  <p className="mt-2 text-sm font-medium">{ipLookup.city ?? "Unknown"}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    ISP
+                  </p>
+                  <p className="mt-2 text-sm font-medium">{ipLookup.isp ?? "Unknown"}</p>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-card/50 p-3">
+                  <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    Org
+                  </p>
+                  <p className="mt-2 text-sm font-medium">{ipLookup.org ?? "Unknown"}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
+                IP enrichment will appear here after the source IP summaries load.
+              </div>
+            )}
           </div>
 
           <div className="rounded-xl border border-border/60 bg-background/40 p-4">

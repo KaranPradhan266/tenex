@@ -178,6 +178,11 @@ class IpAiInsightRequest(BaseModel):
     total_requests: int
     total_bytes_in: int
     total_bytes_out: int
+    country: str | None = None
+    regionName: str | None = None
+    city: str | None = None
+    isp: str | None = None
+    org: str | None = None
     services: list[IpInsightSummaryRow]
     paths: list[IpInsightSummaryRow]
     outcomes: list[IpInsightSummaryRow]
@@ -187,6 +192,14 @@ class IpAiInsightRequest(BaseModel):
 class IpAiInsightResponse(BaseModel):
     insight: str
     model: str
+
+
+class IpLookupResponse(BaseModel):
+    country: str | None = None
+    regionName: str | None = None
+    city: str | None = None
+    isp: str | None = None
+    org: str | None = None
 
 
 class SupabaseRequestPayload(BaseModel):

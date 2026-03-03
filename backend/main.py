@@ -8,6 +8,7 @@ from app.ml.scoring import score_ip_risk_rankings
 from app.models import (
     IpAiInsightRequest,
     IpAiInsightResponse,
+    IpLookupResponse,
     IpRiskRankingsResponse,
     IpSignalsResponse,
     ProcessingSectionReport,
@@ -15,6 +16,7 @@ from app.models import (
 )
 from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
+from app.services.ip_lookup import lookup_ip_metadata
 from app.services.supabase import SupabaseService
 from app.services.xai import XAIService
 
@@ -95,6 +97,11 @@ async def get_ip_ai_insight(payload: IpAiInsightRequest) -> IpAiInsightResponse:
     xai = XAIService.from_settings()
     insight = xai.generate_ip_insight(payload)
     return IpAiInsightResponse(insight=insight, model=xai.model)
+
+
+@app.get("/api/ip-lookup", response_model=IpLookupResponse)
+async def get_ip_lookup(src_ip: str = Query(...)) -> IpLookupResponse:
+    return lookup_ip_metadata(src_ip)
 
 
 @app.post("/api/logs/upload", response_model=UploadSummary)

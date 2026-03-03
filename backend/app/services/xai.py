@@ -96,6 +96,13 @@ class XAIService:
         summary = {
             "source_ip": payload.src_ip,
             "job_id": str(payload.job_id),
+            "ip_enrichment": {
+                "country": payload.country,
+                "regionName": payload.regionName,
+                "city": payload.city,
+                "isp": payload.isp,
+                "org": payload.org,
+            },
             "totals": {
                 "requests": payload.total_requests,
                 "bytes_in": payload.total_bytes_in,
