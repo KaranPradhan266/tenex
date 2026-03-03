@@ -76,7 +76,7 @@ const data = {
         url: "/traffic",
       },
       {
-        title: "Per-IP Drill Down",
+        title: "IP Drill Down",
         url: "/ipdrill",
       },
       {

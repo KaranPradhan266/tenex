@@ -1,8 +1,6 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { CircularDial } from "@/components/circularDial"
 import { DashboardSpline } from "@/components/dashboard-spline"
-import { DashboardTree } from "@/components/dashboard-tree"
-import { DashboardTreeSecondary } from "@/components/dashboard-tree-secondary"
 import {
   SidebarInset,
   SidebarProvider,
@@ -41,12 +39,6 @@ export default function Page() {
                   showExport={false}
                   className="h-full w-full max-w-[512px]"
                 />
-              </div>
-              <div className="absolute inset-y-[6%] left-0 z-20 w-[50%]">
-                <DashboardTree className="min-h-0" />
-              </div>
-              <div className="absolute inset-y-[6%] right-0 z-20 w-[50%]">
-                <DashboardTreeSecondary className="min-h-0" />
               </div>
             </div>
           </div>

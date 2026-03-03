@@ -1,8 +1,16 @@
 "use client"
 
+import { X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   Table,
   TableBody,
@@ -63,12 +71,56 @@ function toTitleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+function buildWhyFlaggedReasons(row: IpRiskRankingEntry) {
+  const reasons: string[] = []
+
+  if (row.suspicious_outcome_ratio >= 0.3) {
+    reasons.push("high suspicious outcome ratio")
+  } else if (row.suspicious_outcome_ratio > 0) {
+    reasons.push("non-zero suspicious outcome activity")
+  }
+
+  if (row.status_4xx_ratio >= 0.35) {
+    reasons.push("elevated 4xx response rate")
+  } else if (row.status_4xx_ratio >= 0.2) {
+    reasons.push("moderate 4xx response rate")
+  }
+
+  if (row.status_5xx_ratio >= 0.15) {
+    reasons.push("elevated 5xx response rate")
+  } else if (row.status_5xx_ratio >= 0.05) {
+    reasons.push("non-trivial 5xx response rate")
+  }
+
+  if (row.total_requests >= 40) {
+    reasons.push("high request volume")
+  } else if (row.total_requests >= 20) {
+    reasons.push("elevated request volume")
+  }
+
+  if (row.path_count >= 8) {
+    reasons.push("broad path coverage")
+  }
+
+  if (row.service_count >= 4) {
+    reasons.push("multi-service activity")
+  }
+
+  if (row.total_bytes_out >= 50_000) {
+    reasons.push("large outbound byte volume")
+  }
+
+  return reasons.length > 0 ? reasons : ["ranked by overall model feature combination"]
+}
+
 export function IncidentReportsPanel() {
   const [data, setData] = useState<IpRiskRankingsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<SeverityTab>("critical")
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedIp, setSelectedIp] = useState<string | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   const rankings = data?.rankings ?? []
 
   useEffect(() => {
@@ -172,6 +224,8 @@ export function IncidentReportsPanel() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
+  const selectedRow =
+    data.rankings.find((row) => row.src_ip === selectedIp) ?? activeRows[0] ?? null
 
   return (
     <div className="space-y-4">
@@ -208,6 +262,7 @@ export function IncidentReportsPanel() {
             onClick={() => {
               setActiveTab(label)
               setCurrentPage(1)
+              setSelectedIp(groupedRankings[label][0]?.src_ip ?? null)
             }}
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] transition-colors ${
               activeTab === label
@@ -244,7 +299,18 @@ export function IncidentReportsPanel() {
               <TableBody>
                 {paginatedRows.map((row) => (
                   <TableRow key={row.src_ip}>
-                    <TableCell className="font-medium">{row.src_ip}</TableCell>
+                    <TableCell className="font-medium">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedIp(row.src_ip)
+                          setIsDialogOpen(true)
+                        }}
+                        className="text-left underline-offset-4 hover:underline"
+                      >
+                        {row.src_ip}
+                      </button>
+                    </TableCell>
                     <TableCell>{formatRatio(row.suspicious_outcome_ratio)}</TableCell>
                     <TableCell>{formatRatio(row.prediction_confidence)}</TableCell>
                     <TableCell className="capitalize">{row.heuristic_label}</TableCell>
@@ -279,6 +345,37 @@ export function IncidentReportsPanel() {
             </div>
           </div>
         ) : null}
+
+        <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          {selectedRow ? (
+            <AlertDialogContent size="default">
+              <button
+                type="button"
+                onClick={() => setIsDialogOpen(false)}
+                className="text-muted-foreground hover:text-foreground absolute top-3 right-3 inline-flex size-7 items-center justify-center rounded-md border border-border/60 bg-background/60 transition-colors"
+                aria-label="Close details"
+              >
+                <X className="size-4" />
+              </button>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{selectedRow.src_ip}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Why flagged
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="flex flex-wrap gap-2">
+                {buildWhyFlaggedReasons(selectedRow).map((reason) => (
+                  <div
+                    key={`${selectedRow.src_ip}-${reason}`}
+                    className="rounded-full border border-border/60 bg-card/50 px-3 py-1.5 text-xs text-foreground"
+                  >
+                    {reason}
+                  </div>
+                ))}
+              </div>
+            </AlertDialogContent>
+          ) : null}
+        </AlertDialog>
       </div>
     </div>
   )

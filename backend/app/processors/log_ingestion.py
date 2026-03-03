@@ -11,6 +11,8 @@ from pydantic import ValidationError
 from app.config import get_settings
 from app.models import (
     ChartTrafficSankeyAggregate,
+    IpActionSummaryAggregate,
+    IpMethodSummaryAggregate,
     IpMinuteTrafficAggregate,
     IpOutcomeSummaryAggregate,
     IpPathSummaryAggregate,
@@ -87,9 +89,11 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
         lambda: {"traffic_count": 0, "allowed_count": 0, "blocked_count": 0}
     )
     ip_service_counts: Counter[tuple[str, str]] = Counter()
+    ip_method_counts: Counter[tuple[str, str]] = Counter()
     ip_path_counts: Counter[tuple[str, str]] = Counter()
     ip_outcome_counts: Counter[tuple[str, str]] = Counter()
     ip_status_counts: Counter[tuple[str, int]] = Counter()
+    ip_action_counts: Counter[tuple[str, str]] = Counter()
     ip_volume_counts: dict[str, dict[str, int]] = defaultdict(
         lambda: {
             "total_requests": 0,
@@ -134,9 +138,11 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
             minute_counts["blocked_count"] += 1
 
         ip_service_counts[(event.src_ip, event.service)] += 1
+        ip_method_counts[(event.src_ip, event.method)] += 1
         ip_path_counts[(event.src_ip, event.path)] += 1
         ip_outcome_counts[(event.src_ip, event.outcome)] += 1
         ip_status_counts[(event.src_ip, event.status)] += 1
+        ip_action_counts[(event.src_ip, event.action)] += 1
 
         ip_volume = ip_volume_counts[event.src_ip]
         ip_volume["total_requests"] += 1
@@ -172,6 +178,14 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
             )
             for (src_ip, service), request_count in sorted(ip_service_counts.items())
         ],
+        ip_method_aggregates=[
+            IpMethodSummaryAggregate(
+                src_ip=src_ip,
+                method=method,
+                request_count=request_count,
+            )
+            for (src_ip, method), request_count in sorted(ip_method_counts.items())
+        ],
         ip_path_aggregates=[
             IpPathSummaryAggregate(
                 src_ip=src_ip,
@@ -204,5 +218,13 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
                 total_bytes_out=counts["total_bytes_out"],
             )
             for src_ip, counts in sorted(ip_volume_counts.items())
+        ],
+        ip_action_aggregates=[
+            IpActionSummaryAggregate(
+                src_ip=src_ip,
+                action=action,
+                request_count=request_count,
+            )
+            for (src_ip, action), request_count in sorted(ip_action_counts.items())
         ],
     )

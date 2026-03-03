@@ -12,6 +12,8 @@ from app.config import get_settings
 from app.models import (
     ChartTrafficSankeyAggregate,
     ChartUserAgentAggregate,
+    IpActionSummaryAggregate,
+    IpMethodSummaryAggregate,
     IpMinuteTrafficAggregate,
     IpOutcomeSummaryAggregate,
     IpPathSummaryAggregate,
@@ -339,6 +341,33 @@ class SupabaseService:
             extra_headers={"Prefer": "return=minimal"},
         )
 
+    def insert_ip_method_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpMethodSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "method": row.method,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_method_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
     def insert_ip_path_summary(
         self,
         job_id: UUID,
@@ -443,6 +472,33 @@ class SupabaseService:
         self.request(
             "POST",
             "/rest/v1/ip_volume_summary",
+            body=json.dumps(payload).encode("utf-8"),
+            content_type="application/json",
+            extra_headers={"Prefer": "return=minimal"},
+        )
+
+    def insert_ip_action_summary(
+        self,
+        job_id: UUID,
+        user_id: UUID,
+        rows: list[IpActionSummaryAggregate],
+    ) -> None:
+        if not rows:
+            return
+
+        payload = [
+            {
+                "job_id": str(job_id),
+                "user_id": str(user_id),
+                "src_ip": row.src_ip,
+                "action": row.action,
+                "request_count": row.request_count,
+            }
+            for row in rows
+        ]
+        self.request(
+            "POST",
+            "/rest/v1/ip_action_summary",
             body=json.dumps(payload).encode("utf-8"),
             content_type="application/json",
             extra_headers={"Prefer": "return=minimal"},

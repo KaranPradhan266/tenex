@@ -192,6 +192,13 @@ async def upload_logs(
         ),
     )
     run_summary_step(
+        "ip_method_summary",
+        clear_table="ip_method_summary",
+        insert_fn=lambda: supabase.insert_ip_method_summary(
+            job_id, user_id, processed.ip_method_aggregates
+        ),
+    )
+    run_summary_step(
         "ip_path_summary",
         clear_table="ip_path_summary",
         insert_fn=lambda: supabase.insert_ip_path_summary(
@@ -217,6 +224,13 @@ async def upload_logs(
         clear_table="ip_volume_summary",
         insert_fn=lambda: supabase.insert_ip_volume_summary(
             job_id, user_id, processed.ip_volume_aggregates
+        ),
+    )
+    run_summary_step(
+        "ip_action_summary",
+        clear_table="ip_action_summary",
+        insert_fn=lambda: supabase.insert_ip_action_summary(
+            job_id, user_id, processed.ip_action_aggregates
         ),
     )
 

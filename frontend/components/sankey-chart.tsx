@@ -16,10 +16,16 @@ type SankeyLink = {
 type SankeyChartProps = {
   nodes: SankeyNode[]
   links: SankeyLink[]
+  onNodeClick?: (nodeName: string) => void
 }
 
-export function SankeyChart({ nodes, links }: SankeyChartProps) {
+export function SankeyChart({ nodes, links, onNodeClick }: SankeyChartProps) {
   const chartRef = useRef<HTMLDivElement | null>(null)
+  const onNodeClickRef = useRef(onNodeClick)
+
+  useEffect(() => {
+    onNodeClickRef.current = onNodeClick
+  }, [onNodeClick])
 
   useEffect(() => {
     if (!chartRef.current) {
@@ -118,6 +124,22 @@ export function SankeyChart({ nodes, links }: SankeyChartProps) {
       backgroundColor: "transparent",
     })
 
+    const handleClick = (params: unknown) => {
+      if (
+        onNodeClickRef.current &&
+        typeof params === "object" &&
+        params !== null &&
+        "dataType" in params &&
+        "name" in params &&
+        (params as { dataType?: string }).dataType === "node" &&
+        typeof (params as { name?: unknown }).name === "string"
+      ) {
+        onNodeClickRef.current((params as { name: string }).name)
+      }
+    }
+
+    chart.on("click", handleClick)
+
     const resizeObserver = new ResizeObserver(() => {
       chart.resize()
     })
@@ -125,6 +147,7 @@ export function SankeyChart({ nodes, links }: SankeyChartProps) {
     resizeObserver.observe(chartRef.current)
 
     return () => {
+      chart.off("click", handleClick)
       resizeObserver.disconnect()
       chart.dispose()
     }

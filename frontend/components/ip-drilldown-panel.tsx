@@ -1,6 +1,7 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
@@ -78,20 +79,14 @@ function SummaryList<T extends { request_count: number }>(props: {
 }
 
 export function IpDrilldownPanel() {
+  const searchParams = useSearchParams()
   const [ipInput, setIpInput] = useState("")
   const [data, setData] = useState<DrilldownData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function loadDrilldown(srcIp: string) {
     setError(null)
-
-    if (!ipInput.trim()) {
-      setError("Enter a source IP to inspect.")
-      return
-    }
-
     setIsLoading(true)
 
     try {
@@ -117,8 +112,6 @@ export function IpDrilldownPanel() {
       if (jobsError || !latestJob) {
         throw new Error("No completed ingestion jobs found.")
       }
-
-      const srcIp = ipInput.trim()
 
       const [
         serviceResult,
@@ -195,6 +188,28 @@ export function IpDrilldownPanel() {
       setIsLoading(false)
     }
   }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const srcIp = ipInput.trim()
+    if (!srcIp) {
+      setError("Enter a source IP to inspect.")
+      return
+    }
+
+    await loadDrilldown(srcIp)
+  }
+
+  useEffect(() => {
+    const srcIpParam = searchParams.get("src_ip")?.trim() ?? ""
+    if (!srcIpParam) {
+      return
+    }
+
+    setIpInput(srcIpParam)
+    void loadDrilldown(srcIpParam)
+  }, [searchParams])
 
   return (
     <div className="space-y-6">

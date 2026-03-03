@@ -75,6 +75,12 @@ class IpServiceSummaryAggregate(BaseModel):
     request_count: int
 
 
+class IpMethodSummaryAggregate(BaseModel):
+    src_ip: str
+    method: str
+    request_count: int
+
+
 class IpPathSummaryAggregate(BaseModel):
     src_ip: str
     path: str
@@ -100,6 +106,12 @@ class IpVolumeSummaryAggregate(BaseModel):
     total_bytes_out: int
 
 
+class IpActionSummaryAggregate(BaseModel):
+    src_ip: str
+    action: str
+    request_count: int
+
+
 class ProcessedLogFile(BaseModel):
     total_lines: int
     parsed_lines: int
@@ -110,10 +122,12 @@ class ProcessedLogFile(BaseModel):
     sankey_aggregates: list[ChartTrafficSankeyAggregate]
     ip_minute_traffic_aggregates: list[IpMinuteTrafficAggregate]
     ip_service_aggregates: list[IpServiceSummaryAggregate]
+    ip_method_aggregates: list[IpMethodSummaryAggregate]
     ip_path_aggregates: list[IpPathSummaryAggregate]
     ip_outcome_aggregates: list[IpOutcomeSummaryAggregate]
     ip_status_aggregates: list[IpStatusSummaryAggregate]
     ip_volume_aggregates: list[IpVolumeSummaryAggregate]
+    ip_action_aggregates: list[IpActionSummaryAggregate]
 
 
 class TimeSeriesPoint(BaseModel):
