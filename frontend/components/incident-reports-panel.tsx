@@ -142,7 +142,7 @@ export function IncidentReportsPanel() {
         }
 
         const response = await fetch(
-          `${API_BASE_URL}/api/ip-risk-rankings?user_id=${encodeURIComponent(user.id)}`,
+          `${API_BASE_URL}/api/ip-risk-rankings?user_id=${encodeURIComponent(user.id)}&limit=100`,
           {
             method: "GET",
           }

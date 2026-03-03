@@ -202,6 +202,11 @@ class IpLookupResponse(BaseModel):
     org: str | None = None
 
 
+class IpThreatIntelResponse(BaseModel):
+    blacklisted: bool
+    detected_engines: list[str]
+
+
 class SupabaseRequestPayload(BaseModel):
     method: str
     path: str

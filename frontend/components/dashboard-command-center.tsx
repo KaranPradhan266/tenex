@@ -381,10 +381,10 @@ export function DashboardCommandCenter() {
         <div className="relative flex h-full min-h-[640px] items-center justify-center overflow-hidden rounded-xl">
           <DashboardSpline className="absolute inset-x-[22%] inset-y-[24%] min-h-0 -translate-y-[25%] rounded-full bg-transparent" />
           <div className="pointer-events-none absolute inset-0 z-10 flex -translate-x-[2.5%] -translate-y-[10%] items-center justify-center">
-            <CircularDial
+            {/* <CircularDial
               showExport={false}
               className="h-full w-full max-w-[512px]"
-            />
+            /> */}
           </div>
 
           <div className="absolute bottom-5 left-5 right-5 z-20 grid gap-3 md:grid-cols-3">

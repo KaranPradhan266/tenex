@@ -124,10 +124,16 @@ def process_uploaded_log(content: bytes) -> ProcessedLogFile:
         user_agents.append(event.user_agent)
 
         status_class = _status_class(event.status)
-        sankey_link_counts[(event.method, event.service)] += 1
-        sankey_link_counts[(event.service, status_class)] += 1
-        sankey_link_counts[(status_class, event.outcome)] += 1
-        sankey_link_counts[(event.outcome, event.action)] += 1
+        sankey_edges = (
+            (event.method, event.service),
+            (event.service, status_class),
+            (status_class, event.outcome),
+            (event.outcome, event.action),
+        )
+        for source, target in sankey_edges:
+            if source == target:
+                continue
+            sankey_link_counts[(source, target)] += 1
 
         bucket_ts = _floor_bucket(event.ts, 60)
         minute_counts = ip_minute_traffic_counts[(event.src_ip, bucket_ts)]

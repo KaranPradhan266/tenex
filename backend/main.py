@@ -11,6 +11,7 @@ from app.models import (
     IpLookupResponse,
     IpRiskRankingsResponse,
     IpSignalsResponse,
+    IpThreatIntelResponse,
     ProcessingSectionReport,
     UploadSummary,
 )
@@ -18,6 +19,7 @@ from app.processors.ip_signals import compute_ip_signals
 from app.processors.log_ingestion import process_uploaded_log, validate_filename
 from app.services.ip_lookup import lookup_ip_metadata
 from app.services.supabase import SupabaseService
+from app.services.virustotal import lookup_ip_threat_intel
 from app.services.xai import XAIService
 
 app = FastAPI(title="tenex-backend")
@@ -102,6 +104,11 @@ async def get_ip_ai_insight(payload: IpAiInsightRequest) -> IpAiInsightResponse:
 @app.get("/api/ip-lookup", response_model=IpLookupResponse)
 async def get_ip_lookup(src_ip: str = Query(...)) -> IpLookupResponse:
     return lookup_ip_metadata(src_ip)
+
+
+@app.get("/api/ip-threat-intel", response_model=IpThreatIntelResponse)
+async def get_ip_threat_intel(src_ip: str = Query(...)) -> IpThreatIntelResponse:
+    return lookup_ip_threat_intel(src_ip)
 
 
 @app.post("/api/logs/upload", response_model=UploadSummary)

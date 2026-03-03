@@ -64,7 +64,7 @@ export function LoginForm({
       }
 
       if (session) {
-        router.replace("/dashboard")
+        router.replace("/overview")
         return
       }
 
@@ -101,7 +101,7 @@ export function LoginForm({
       return
     }
 
-    router.replace("/dashboard")
+    router.replace("/overview")
     router.refresh()
   }
 

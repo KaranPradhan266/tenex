@@ -57,6 +57,11 @@ type IpLookupResponse = {
   org: string | null
 }
 
+type IpThreatIntelResponse = {
+  blacklisted: boolean
+  detected_engines: string[]
+}
+
 function renderInlineMarkdown(text: string) {
   const segments = text.split(/(\*\*.*?\*\*)/g)
 
@@ -151,6 +156,9 @@ export function IpDrilldownPanel() {
   const [ipLookup, setIpLookup] = useState<IpLookupResponse | null>(null)
   const [ipLookupError, setIpLookupError] = useState<string | null>(null)
   const [isLoadingIpLookup, setIsLoadingIpLookup] = useState(false)
+  const [ipThreatIntel, setIpThreatIntel] = useState<IpThreatIntelResponse | null>(null)
+  const [ipThreatIntelError, setIpThreatIntelError] = useState<string | null>(null)
+  const [isLoadingIpThreatIntel, setIsLoadingIpThreatIntel] = useState(false)
 
   const currentContextKey = data ? `${data.jobId}:${data.srcIp}` : null
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080"
@@ -165,6 +173,9 @@ export function IpDrilldownPanel() {
     setIpLookup(null)
     setIpLookupError(null)
     setIsLoadingIpLookup(false)
+    setIpThreatIntel(null)
+    setIpThreatIntelError(null)
+    setIsLoadingIpThreatIntel(false)
 
     try {
       const supabase = getSupabaseBrowserClient()
@@ -255,6 +266,7 @@ export function IpDrilldownPanel() {
         statuses: (statusResult.data as StatusRow[] | null) ?? [],
       })
       void loadIpLookup(srcIp)
+      void loadIpThreatIntel(srcIp)
     } catch (caughtError) {
       setData(null)
       setError(
@@ -365,6 +377,39 @@ export function IpDrilldownPanel() {
       )
     } finally {
       setIsLoadingIpLookup(false)
+    }
+  }
+
+  async function loadIpThreatIntel(srcIp: string) {
+    setIpThreatIntel(null)
+    setIpThreatIntelError(null)
+    setIsLoadingIpThreatIntel(true)
+
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/ip-threat-intel?src_ip=${encodeURIComponent(srcIp)}`
+      )
+      const responseBody = (await response.json()) as
+        | IpThreatIntelResponse
+        | { detail?: string }
+
+      if (!response.ok) {
+        throw new Error(
+          "detail" in responseBody && responseBody.detail
+            ? responseBody.detail
+            : "Unable to load threat intel."
+        )
+      }
+
+      setIpThreatIntel(responseBody as IpThreatIntelResponse)
+    } catch (caughtError) {
+      setIpThreatIntelError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Unable to load threat intel."
+      )
+    } finally {
+      setIsLoadingIpThreatIntel(false)
     }
   }
 
@@ -507,6 +552,53 @@ export function IpDrilldownPanel() {
             ) : (
               <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
                 IP enrichment will appear here after the source IP summaries load.
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+            <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+              Threat Intel
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              VirusTotal blacklist detections for this source IP.
+            </p>
+
+            {isLoadingIpThreatIntel ? (
+              <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
+                Loading threat intel...
+              </div>
+            ) : ipThreatIntelError ? (
+              <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {ipThreatIntelError}
+              </div>
+            ) : ipThreatIntel ? (
+              <div className="mt-4 rounded-lg border border-border/50 bg-card/50 p-4">
+                {ipThreatIntel.blacklisted ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-destructive">
+                      Detected by blacklist engines
+                    </p>
+                    <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                      {ipThreatIntel.detected_engines.map((engine) => (
+                        <li
+                          key={engine}
+                          className="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm"
+                        >
+                          {engine}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-sm font-medium text-emerald-400">
+                    Not blacklisted
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="text-muted-foreground mt-4 rounded-lg border border-dashed border-border/50 p-4 text-sm">
+                Threat intel will appear here after the source IP summaries load.
               </div>
             )}
           </div>
