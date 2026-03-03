@@ -13,8 +13,7 @@ export function DashboardSpline({ className }: DashboardSplineProps) {
   const { state } = useSidebar()
 
   const splineSceneUrl =
-    process.env.NEXT_PUBLIC_SPLINE_SCENE_URL ??
-    (state === "expanded" ? "/sm_globe.splinecode" : "/globe.splinecode")
+    process.env.NEXT_PUBLIC_SPLINE_SCENE_URL ?? "/mainGlobe.splinecode"
 
   return (
     <div
