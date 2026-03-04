@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from "react"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
-import { CircularDial } from "./circularDial"
 import { DashboardSpline } from "./dashboard-spline"
 
 const API_BASE_URL =
@@ -380,35 +379,36 @@ export function DashboardCommandCenter() {
       <div className="rounded-2xl border border-border/60 bg-background/45 p-4">
         <div className="relative flex h-full min-h-[640px] items-center justify-center overflow-hidden rounded-xl">
           <DashboardSpline className="absolute inset-x-[22%] inset-y-[24%] min-h-0 -translate-y-[25%] rounded-full bg-transparent" />
-          <div className="pointer-events-none absolute inset-0 z-10 flex -translate-x-[2.5%] -translate-y-[10%] items-center justify-center">
-            {/* <CircularDial
-              showExport={false}
-              className="h-full w-full max-w-[512px]"
-            /> */}
-          </div>
+          <div className="pointer-events-none absolute inset-0 z-20">
+            <div className="absolute left-[48%] top-[5%] w-full max-w-[180px] -translate-x-1/2">
+              <div className="rounded-xl border border-border/60 bg-background/75 p-3 text-center backdrop-blur-sm">
+                <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                  All Traffic
+                </p>
+                <p className="mt-2 text-2xl font-semibold">{trafficTotal}</p>
+              </div>
+            </div>
 
-          <div className="absolute bottom-5 left-5 right-5 z-20 grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-border/60 bg-background/75 p-3 backdrop-blur-sm">
-              <p className="text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
-                All Traffic
-              </p>
-              <p className="mt-2 text-2xl font-semibold">{trafficTotal}</p>
+            <div className="absolute left-[10%] top-[60%] w-full max-w-[160px] -translate-y-1/2">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center backdrop-blur-sm">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300">
+                  Allowed
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-emerald-300">
+                  {data.allowedCount}
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-emerald-300">
-                Allowed
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-emerald-300">
-                {data.allowedCount}
-              </p>
-            </div>
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 backdrop-blur-sm">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-destructive">
-                Blocked
-              </p>
-              <p className="mt-2 text-2xl font-semibold text-destructive">
-                {data.blockedCount}
-              </p>
+
+            <div className="absolute right-[10%] top-[60%] w-full max-w-[160px] -translate-y-1/2">
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-center backdrop-blur-sm">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-destructive">
+                  Blocked
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-destructive">
+                  {data.blockedCount}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -449,7 +449,7 @@ export function DashboardCommandCenter() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Quick Actions" eyebrow="Pivot Faster">
+        {/* <SectionCard title="Quick Actions" eyebrow="Pivot Faster">
           <div className="grid gap-2">
             <Link
               href="/reports"
@@ -470,7 +470,7 @@ export function DashboardCommandCenter() {
               Review User-Agent Analysis
             </Link>
           </div>
-        </SectionCard>
+        </SectionCard> */}
       </div>
     </div>
   )
