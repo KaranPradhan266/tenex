@@ -22,14 +22,14 @@ from app.services.supabase import SupabaseService
 from app.services.virustotal import lookup_ip_threat_intel
 from app.services.xai import XAIService
 
+settings = get_settings()
 app = FastAPI(title="tenex-backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://tenex-kappa.vercel.app/",
-        "https://tenex-5mwt.onrender.com/"
+        *settings.frontend_origins,
     ],
     allow_credentials=True,
     allow_methods=["*"],

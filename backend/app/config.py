@@ -17,12 +17,19 @@ class Settings:
     xai_api_key: str | None
     xai_model: str
     virustotal_api_key: str | None
+    frontend_origins: tuple[str, ...]
     allowed_extensions: tuple[str, ...]
     max_sample_errors: int
     max_sample_events: int
 
 
 def get_settings() -> Settings:
+    configured_origins = tuple(
+        origin.strip().rstrip("/")
+        for origin in os.getenv("FRONTEND_ORIGINS", "").split(",")
+        if origin.strip()
+    )
+
     return Settings(
         supabase_url=os.getenv("SUPABASE_URL"),
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
@@ -30,6 +37,7 @@ def get_settings() -> Settings:
         xai_api_key=os.getenv("XAI_API_KEY"),
         xai_model=os.getenv("XAI_MODEL", "grok-4-latest"),
         virustotal_api_key=os.getenv("VIRUSTOTAL_API_KEY"),
+        frontend_origins=configured_origins,
         allowed_extensions=(".log", ".txt"),
         max_sample_errors=5,
         max_sample_events=5,
