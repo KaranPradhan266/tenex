@@ -1,3 +1,5 @@
+import { Suspense } from "react"
+
 import { AppSidebar } from "@/components/app-sidebar"
 import { IpDrilldownPanel } from "@/components/ip-drilldown-panel"
 import {
@@ -22,7 +24,15 @@ export default function IpDrillPage() {
               Inspect precomputed summaries for a single source IP from the latest completed ingestion job.
             </p>
             <div className="mt-6 rounded-xl border bg-background/60 p-4">
-              <IpDrilldownPanel />
+              <Suspense
+                fallback={
+                  <div className="flex h-[320px] items-center justify-center text-sm text-muted-foreground">
+                    Loading IP drill-down...
+                  </div>
+                }
+              >
+                <IpDrilldownPanel />
+              </Suspense>
             </div>
           </div>
         </div>
