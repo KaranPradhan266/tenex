@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_settings
 from app.ml.scoring import score_ip_risk_rankings
 from app.models import (
     IpAiInsightRequest,
